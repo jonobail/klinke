@@ -65,8 +65,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "12kB",
+                  "maximumError": "20kB"
                 }
               ],
               "outputHashing": "all"
@@ -87,9 +87,19 @@
             },
             "development": {
               "buildTarget": "klinke:build:development"
+            },
+            "tailnet": {
+              "buildTarget": "klinke:build:development",
+              "host": "0.0.0.0",
+              "allowedHosts": [
+                ".ts.net"
+              ]
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
         }
       }
     }

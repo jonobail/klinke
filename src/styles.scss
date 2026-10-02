@@ -1,1 +1,67 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  color-scheme: dark;
+  --bg: #1b1d24;
+  --panel: #262932;
+  --floor: #1f222a;
+  --grid: #2a2e38;
+  --line: #2f333e;
+  --text: #dcd8cc;
+  --muted: #8b8e99;
+  --cream: #ecdcb4;
+  --accent: #e8505b;
+  --cable: #d8434f;
+  --green: #6be08f;
+  --font-pixel: 'Silkscreen', ui-monospace, monospace;
+  --font-mono: 'VT323', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-pixel);
+  -webkit-font-smoothing: none;
+  // No double-tap-to-zoom delay on buttons; the patch floor handles its own pinch and double tap.
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+// Gear hover info (see hover-info.ts): appended to <body>, so it floats over everything.
+.kl-hover-info {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 300px;
+  padding: 9px 11px;
+  color: var(--text);
+  background: var(--panel);
+  box-shadow:
+    0 0 0 2px var(--line),
+    6px 6px 0 #00000080;
+  pointer-events: none;
+  strong {
+    font: 12px/1 var(--font-pixel);
+    letter-spacing: 0.08em;
+    color: var(--cream);
+  }
+  em {
+    font: 15px/1.1 var(--font-mono);
+    font-style: normal;
+    color: var(--green);
+  }
+  span {
+    font: 15px/1.15 var(--font-mono);
+  }
+}

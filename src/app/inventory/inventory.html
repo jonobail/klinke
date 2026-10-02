@@ -1,0 +1,36 @@
+<div class="side">
+  <h2>INVENTORY</h2>
+  <div class="filters" role="group" aria-label="Filter gear">
+    @for (f of filters; track f) {
+      <button
+        type="button"
+        [class.on]="filter() === f"
+        [attr.aria-pressed]="filter() === f"
+        (click)="filter.set(f)"
+      >
+        {{ f.toUpperCase() }}
+      </button>
+    }
+  </div>
+</div>
+
+<ul class="shelf">
+  @for (item of items(); track item.kind) {
+    <li>
+      <button
+        type="button"
+        class="tile"
+        draggable="true"
+        [klHoverInfo]="item.kind"
+        [attr.aria-label]="'Add ' + item.label + ' (click, or drag onto the floor)'"
+        (dragstart)="dragStart($event, item.kind)"
+        (click)="add(item.kind)"
+      >
+        <span class="frame" [style.width.px]="item.w" [style.height.px]="item.h">
+          <kl-gear-view [gear]="item.preview" [preview]="true" [style.scale]="item.scale" />
+        </span>
+        <span class="name">{{ item.label }}</span>
+      </button>
+    </li>
+  }
+</ul>

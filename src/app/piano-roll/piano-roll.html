@@ -1,0 +1,74 @@
+@if (track(); as t) {
+  <header>
+    <strong>{{ t.name }}</strong>
+    <span class="inst">→ {{ instrumentLabel() }}</span>
+    <label>
+      GRID
+      <select aria-label="Grid" [value]="t.grid" (change)="setGrid($event)">
+        @for (g of GRIDS; track g) {
+          <option [value]="g" [selected]="g === t.grid">{{ g }}</option>
+        }
+      </select>
+    </label>
+    <span class="hint">
+      click to add · drag to move · drag the right edge to resize · double-click or Delete to remove
+      @if (t.arm) {
+        · REC records what you play
+      }
+    </span>
+    <button type="button" class="tool" (click)="clear()">CLEAR</button>
+    <button type="button" class="tool close" aria-label="Close piano roll" (click)="close()">
+      ✕
+    </button>
+  </header>
+  <div class="scroller" #scroller tabindex="0" aria-label="Piano roll">
+    <div class="keys" [style.height.px]="height">
+      @for (n of rows; track n) {
+        <button
+          type="button"
+          class="pkey"
+          tabindex="-1"
+          [class.black]="isBlack(n)"
+          [style.height.px]="ROW"
+          [attr.aria-label]="'Play ' + n"
+          (pointerdown)="keyDown(n)"
+        >
+          {{ label(n) }}
+        </button>
+      }
+    </div>
+    <div
+      class="grid"
+      [style.width.px]="width"
+      [style.height.px]="height"
+      [style.--row.px]="ROW"
+      [style.--beat.px]="BEAT"
+      [style.--bar.px]="BAR"
+      (pointerdown)="gridDown($event)"
+    >
+      @for (n of rows; track n) {
+        @if (isBlack(n)) {
+          <i class="lane-black" [style.top.px]="y(n)" [style.height.px]="ROW"></i>
+        }
+      }
+      @for (b of bars; track b) {
+        <span class="bar-no" [style.left.px]="b * BAR">{{ b + 1 }}</span>
+      }
+      @for (n of t.notes; track n.id) {
+        <div
+          class="note"
+          [class.selected]="selected() === n.id"
+          [class.wide]="n.length * BEAT >= 16"
+          [style.left.px]="n.start * BEAT"
+          [style.top.px]="y(n.note)"
+          [style.width.px]="n.length * BEAT"
+          [style.height.px]="ROW"
+          [title]="n.note + ' · ' + n.start + ' + ' + n.length"
+          (pointerdown)="noteDown($event, n)"
+          (dblclick)="remove(n)"
+        ></div>
+      }
+      <i class="ph" [style.left.px]="playhead()"></i>
+    </div>
+  </div>
+}

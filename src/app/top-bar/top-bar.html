@@ -1,0 +1,157 @@
+<div class="brand">
+  <svg class="logo" viewBox="0 0 16 16" aria-hidden="true">
+    <rect width="16" height="16" fill="var(--accent)" />
+    <path d="M2 9h2V7h2v4h2V4h2v6h2V8h2" fill="none" stroke="#1b1d24" stroke-width="1.5" />
+  </svg>
+  <h1>KLINKE</h1>
+</div>
+
+<nav class="menus" aria-label="Menu">
+  @for (m of menus; track m.name) {
+    <div class="menu">
+      <button
+        type="button"
+        [class.open]="openMenu() === m.name"
+        [attr.aria-expanded]="openMenu() === m.name"
+        (click)="toggleMenu(m.name)"
+      >
+        {{ m.name }}
+      </button>
+      @if (openMenu() === m.name) {
+        <ul role="menu">
+          @for (item of m.items; track item.label) {
+            <li role="none">
+              <button type="button" role="menuitem" (click)="pick(item)">{{ item.label }}</button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
+</nav>
+
+<!-- Narrow screens: every menu in one list. -->
+<div class="menu compact">
+  <button
+    type="button"
+    aria-label="Menu"
+    title="Menu"
+    [class.open]="openMenu() === 'ALL'"
+    [attr.aria-expanded]="openMenu() === 'ALL'"
+    (click)="toggleMenu('ALL')"
+  >
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M2 3h12v2H2zM2 7h12v2H2zM2 11h12v2H2z" fill="currentColor" />
+    </svg>
+  </button>
+  @if (openMenu() === 'ALL') {
+    <ul role="menu">
+      @for (m of menus; track m.name) {
+        <li role="presentation" class="group">{{ m.name }}</li>
+        @for (item of m.items; track item.label) {
+          <li role="none">
+            <button type="button" role="menuitem" (click)="pick(item)">{{ item.label }}</button>
+          </li>
+        }
+      }
+    </ul>
+  }
+</div>
+
+<div class="transport" role="group" aria-label="Transport">
+  <button
+    type="button"
+    class="t rew"
+    title="Rewind"
+    aria-label="Rewind"
+    (click)="transport.rewind()"
+  >
+    <svg viewBox="0 0 16 16"><path d="M3 3h2v10H3zM13 3v10L6 8z" fill="currentColor" /></svg>
+  </button>
+  <button
+    type="button"
+    class="t play"
+    [class.on]="transport.playing()"
+    title="Play (Space)"
+    aria-label="Play"
+    [attr.aria-pressed]="transport.playing()"
+    (click)="transport.play()"
+  >
+    <svg viewBox="0 0 16 16"><path d="M4 2v12l10-6z" fill="currentColor" /></svg>
+  </button>
+  <button
+    type="button"
+    class="t stop"
+    title="Stop (twice to return to the top)"
+    aria-label="Stop"
+    (click)="transport.stop()"
+  >
+    <svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" fill="currentColor" /></svg>
+  </button>
+  <button
+    type="button"
+    class="t rec"
+    [class.on]="transport.recording()"
+    title="Record on armed tracks"
+    aria-label="Record"
+    [attr.aria-pressed]="transport.recording()"
+    (click)="transport.record()"
+  >
+    <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="currentColor" /></svg>
+  </button>
+</div>
+
+<div class="counter">
+  <output class="pos" aria-label="Song position">{{ transport.position() }}</output>
+  <label class="bpm">
+    <input
+      type="number"
+      min="40"
+      max="300"
+      step="0.1"
+      aria-label="Tempo in BPM"
+      [value]="transport.bpm()"
+      (change)="bpmInput($event)"
+      (keydown)="$event.stopPropagation()"
+    />
+    BPM
+  </label>
+  <span class="meter-sig">4/4</span>
+</div>
+
+<div class="actions">
+  <span class="midi" [class.ready]="engine.midiInputs().length > 0" [title]="midiTitle()"
+    >MIDI</span
+  >
+  <button
+    type="button"
+    class="audio"
+    [class.on]="engine.running()"
+    [class.blocked]="!engine.running() && !engine.muted()"
+    [attr.aria-pressed]="engine.running()"
+    [title]="
+      engine.running()
+        ? 'Sound on: click to mute'
+        : engine.muted()
+          ? 'Muted: click to unmute'
+          : 'Sound is off: tap here (or anywhere) to start it'
+    "
+    (click)="engine.toggle()"
+  >
+    <svg class="spk" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor" />
+    </svg>
+    <span class="long">AUDIO </span>{{ engine.running() ? 'ON' : 'OFF' }}
+  </button>
+  <button type="button" class="save" [class.dirty]="store.dirty()" (click)="store.save()">
+    SAVE{{ store.dirty() ? ' •' : '' }}
+  </button>
+  <button
+    type="button"
+    class="export"
+    disabled
+    title="Mixdown to WAV arrives with recording (roadmap M3)"
+  >
+    EXPORT MIX
+  </button>
+</div>

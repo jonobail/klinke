@@ -1,0 +1,309 @@
+<div class="face">
+  <header class="band top">
+    <span class="model">SP 1200</span>
+    <span class="sub">SAMPLING PERCUSSION</span>
+    @if (hasKeyboard() && !preview()) {
+      <em class="kbd-mark" title="The computer keyboard (A–K) and MIDI play the pads">⌨ KEYS</em>
+    }
+  </header>
+
+  <!-- Top row: the four modules, each a button whose functions are keyed in on the keypad -->
+  <section class="mod setup">
+    <h3>Set-up</h3>
+    <i class="led" [class.on]="module() === 'setup'"></i>
+    <button
+      type="button"
+      class="btn"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="pressModule('setup')"
+      title="SET-UP: then key in a function number (17 channel, 18 tune/decay, 19 truncate/loop, 20 delete sound)"
+    ></button>
+    <ol class="list">
+      @for (f of setupList; track f.key) {
+        <li>{{ f.key }} {{ f.name }}</li>
+      }
+    </ol>
+  </section>
+
+  <section class="mod disk">
+    <h3>Disk</h3>
+    <i class="led" [class.on]="module() === 'disk'"></i>
+    <button
+      type="button"
+      class="btn"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="pressModule('disk')"
+      title="DISK: saving and loading (not yet)"
+    ></button>
+    <ol class="list">
+      @for (f of diskList; track f.key) {
+        <li [title]="f.name">{{ f.key }} {{ f.name }}</li>
+      }
+    </ol>
+  </section>
+
+  <section class="mod sync">
+    <h3>Sync</h3>
+    <i class="led" [class.on]="module() === 'sync'"></i>
+    <button
+      type="button"
+      class="btn"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="pressModule('sync')"
+      title="SYNC: internal clock only (MIDI / SMPTE / click not yet)"
+    ></button>
+    <ol class="list">
+      @for (f of syncList; track f.key) {
+        <li>{{ f.key }} {{ f.name }}</li>
+      }
+    </ol>
+  </section>
+
+  <section class="mod sample">
+    <h3>Sample</h3>
+    <i class="led" [class.on]="module() === 'sample'" [class.blink]="sampling()"></i>
+    <button
+      type="button"
+      class="btn red"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="pressModule('sample')"
+      [title]="
+        sampling()
+          ? 'Stop sampling'
+          : 'SAMPLE: VU meter, then key 2 voice, 3 level, 4 threshold, 5 length, 6 re-sample, 7 arm, 9 force'
+      "
+    ></button>
+    <span class="gain ctl">
+      <kl-knob [value]="value('gain')" label="GAIN" (changed)="knob('gain', $event)" />
+      <span>Gain</span>
+    </span>
+    <ol class="list">
+      @for (f of sampleList; track f.key) {
+        <li [class.on]="module() === 'sample' && (fn() ?? 1) === f.key">
+          {{ f.key }} {{ f.name }}
+        </li>
+      }
+    </ol>
+  </section>
+
+  <!-- Master control -->
+  <section class="master">
+    <h3>Master Control</h3>
+    <output class="lcd" aria-label="SP 1200 display">{{ lcd() }}</output>
+    <div class="arrows">
+      <span class="key">
+        <button
+          type="button"
+          class="btn"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="notYet('Tempo')"
+          title="Tempo (not yet: the sequencer isn't built)"
+        ></button>
+        <span>Tempo</span>
+      </span>
+      <span class="key">
+        <button
+          type="button"
+          class="btn"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="arrow(-1)"
+          title="◀: step down (preamp in SAMPLE 3, length in SAMPLE 5, channel in SAMPLE 2 / SET-UP 17)"
+        ></button>
+        <span>◀</span>
+      </span>
+      <span class="key">
+        <button
+          type="button"
+          class="btn"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="arrow(1)"
+          title="▶: step up (preamp in SAMPLE 3, length in SAMPLE 5, channel in SAMPLE 2 / SET-UP 17)"
+        ></button>
+        <span>▶</span>
+      </span>
+      <span class="key">
+        <button
+          type="button"
+          class="btn"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="enter()"
+          title="Enter: confirm the function (SET-UP 19 then asks to make truncation permanent)"
+        ></button>
+        <span>Enter</span>
+      </span>
+    </div>
+    <div class="vols">
+      <span class="ctl">
+        <kl-knob [value]="value('volume')" label="MIX VOLUME" (changed)="knob('volume', $event)" />
+        <span>Mix<br />Volume</span>
+      </span>
+      <span class="ctl">
+        <kl-knob
+          [value]="value('metronome')"
+          label="METRONOME VOLUME (no metronome yet)"
+          (changed)="knob('metronome', $event)"
+        />
+        <span>Metronome<br />Volume</span>
+      </span>
+    </div>
+    <div class="keypad">
+      @for (n of [1, 2, 3, 4, 5, 6, 7, 8, 9]; track n) {
+        <span class="key">
+          <span>{{ n }}</span>
+          <button
+            type="button"
+            class="btn"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="key(n)"
+            [title]="keyTitle(n)"
+          ></button>
+        </span>
+      }
+      <span class="key">No</span>
+      <span class="key">0</span>
+      <span class="key">Yes</span>
+      <span class="key zero">
+        <button
+          type="button"
+          class="btn"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="key(0)"
+          [title]="keyTitle(0)"
+        ></button>
+      </span>
+    </div>
+    <div class="transport">
+      <span class="key">
+        <i class="led off"></i>
+        <button
+          type="button"
+          class="btn dark"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="notYet('Tap/Repeat')"
+          title="Tap / Repeat (not yet: the sequencer isn't built)"
+        ></button>
+        <span>Tap/Repeat</span>
+      </span>
+      <span class="key">
+        <i class="led" [class.on]="sampling()"></i>
+        <button
+          type="button"
+          class="btn dark"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="runStop()"
+          title="Run / Stop: stops sampling (playing sequences: not yet)"
+        ></button>
+        <span>Run/Stop</span>
+      </span>
+      <span class="key">
+        <i class="led"></i>
+        <button
+          type="button"
+          class="btn red"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="notYet('Record/Edit')"
+          title="Record / Edit (not yet: the sequencer isn't built)"
+        ></button>
+        <span>Record/Edit</span>
+      </span>
+    </div>
+  </section>
+
+  <!-- Programming: the sequencer's buttons (not built yet) -->
+  <section class="prog">
+    <h3>Programming</h3>
+    <span class="mode-btn">
+      <button
+        type="button"
+        class="btn"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="songSegment()"
+        title="Song / Segment mode (the sequencer: not yet)"
+      ></button>
+      <span class="leds">
+        <span><i class="led" [class.on]="songMode()"></i>Song</span>
+        <span><i class="led" [class.on]="!songMode()"></i>Segment</span>
+      </span>
+    </span>
+    @for (b of programming; track b[0]; let i = $index) {
+      <span class="key col" [style.--col]="i">
+        <span class="up">{{ b[0] }}</span>
+        <button
+          type="button"
+          class="btn"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="notYet(b[0])"
+          [title]="b[0] + ' / ' + b[1] + ' (not yet: no sequencer)'"
+        ></button>
+        <span class="down">{{ b[1] }}</span>
+      </span>
+    }
+  </section>
+
+  <!-- Performance: mode, eight sliders, bank, eight pads -->
+  <section class="perf">
+    <h3>Performance</h3>
+    <span class="mode-btn">
+      <button
+        type="button"
+        class="btn"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="cycleMode()"
+        title="Slider mode: TUNE/DECAY → MIX → MULTI MODE"
+      ></button>
+      <span class="leds">
+        <span><i class="led" [class.on]="mode() === 'tune'"></i>Tune/Decay</span>
+        <span><i class="led" [class.on]="mode() === 'mix'"></i>Mix</span>
+        <span><i class="led" [class.on]="mode() === 'multi'"></i>Multi Mode</span>
+      </span>
+    </span>
+    <span class="scale" aria-hidden="true"></span>
+    @for (s of sliders(); track $index; let i = $index) {
+      <span class="slider col" [style.--col]="i">
+        <kl-fader
+          [value]="s.value"
+          [label]="s.label"
+          [valueText]="s.text"
+          (changed)="s.set($event)"
+        />
+        <span>{{ i + 1 }}</span>
+      </span>
+    }
+    <span class="bank-btn">
+      <button
+        type="button"
+        class="btn"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="cycleBank()"
+        [title]="'Bank select (now ' + bank() + '): A → B → C → D'"
+      ></button>
+      <span class="leds">
+        @for (b of banks; track b) {
+          <span><i class="led" [class.on]="bank() === b"></i>{{ b }}</span>
+        }
+      </span>
+    </span>
+    @for (i of pads; track i) {
+      <span class="pad-col col" [style.--col]="i">
+        <button
+          type="button"
+          class="sp-pad"
+          [class.down]="padHeld(i)"
+          [class.selected]="padSelected(i)"
+          [class.decay]="padDecay(i)"
+          [attr.aria-label]="'Pad ' + bank() + (i + 1)"
+          [title]="
+            'Pad ' + bank() + (i + 1) + ': plays the sound and selects it for sampling and editing'
+          "
+          (pointerdown)="padDown($event, i)"
+        ></button>
+        <span>{{ i + 1 }}</span>
+      </span>
+    }
+  </section>
+
+  <footer class="band bottom">
+    <span>SAMPLE IN</span>
+    <span>MIX OUT</span>
+  </footer>
+</div>

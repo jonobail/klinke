@@ -1,0 +1,290 @@
+:host {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background-color: var(--floor);
+  border-block: 2px solid var(--line);
+}
+.scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  // Touch gestures on the floor are ours: pinch zooms the floor (not the page), one finger pans
+  // empty floor or drags gear, and controls turn instead of scrolling.
+  touch-action: none;
+  // The grid runs past the floor's edge so wide screens don't show a bare margin.
+  background-image:
+    linear-gradient(var(--grid) 2px, transparent 2px),
+    linear-gradient(90deg, var(--grid) 2px, transparent 2px);
+  background-size: var(--cell) var(--cell);
+  background-attachment: local;
+}
+.sizer {
+  position: relative;
+}
+.surface {
+  position: relative;
+  transform-origin: 0 0;
+  // Dragging gear (and auto-scrolling with it) mustn't select the name tags and labels.
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.placed {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+  &:active {
+    cursor: grabbing;
+  }
+  &.selected kl-gear-view {
+    outline: 2px dashed var(--accent);
+    outline-offset: 5px;
+  }
+}
+.tag {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  translate: -50% 0;
+  padding: 5px 10px;
+  white-space: nowrap;
+  font: 11px/1 var(--font-pixel);
+  letter-spacing: 0.1em;
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: 0 0 0 2px var(--line);
+  &.out {
+    color: var(--accent);
+    i {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin-right: 4px;
+      background: var(--accent);
+      rotate: 45deg;
+    }
+  }
+}
+.remove {
+  position: absolute;
+  right: -14px;
+  top: -14px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  font: 16px/1 var(--font-pixel);
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px #0d0e12;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.cables {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+.cable {
+  pointer-events: stroke;
+  cursor: pointer;
+  path {
+    fill: none;
+    stroke-linecap: square;
+  }
+  .hit {
+    stroke: transparent;
+    stroke-width: 16px;
+  }
+  .shade {
+    stroke: #0d0e12;
+    stroke-width: 9px;
+  }
+  .wire {
+    stroke: var(--cable);
+    stroke-width: 5px;
+  }
+  &:hover .wire {
+    stroke: #ff8a92;
+  }
+  &.pending {
+    pointer-events: none;
+    opacity: 0.75;
+    .wire {
+      stroke-dasharray: 8 6;
+    }
+  }
+}
+
+.jack {
+  position: absolute;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  padding: 0;
+  border: none;
+  background: #0d0e12;
+  box-shadow:
+    inset 0 0 0 3px var(--cable),
+    0 0 0 2px #0d0e12;
+  cursor: crosshair;
+  &.in {
+    box-shadow:
+      inset 0 0 0 3px #d9d6cc,
+      0 0 0 2px #0d0e12;
+  }
+  &.plugged {
+    background: var(--cable);
+    box-shadow:
+      inset 0 0 0 2px #f6c3c7,
+      0 0 0 2px #0d0e12;
+  }
+  &:hover,
+  &.pending {
+    scale: 1.4;
+  }
+  &.pending {
+    background: #fff;
+    animation: pulse 0.6s steps(2) infinite;
+  }
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+  // Fingers need a bigger target than the 14 px socket.
+  @media (pointer: coarse) {
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+    }
+  }
+}
+@keyframes pulse {
+  50% {
+    background: var(--cable);
+  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 16px;
+  background: var(--bg);
+  border-top: 2px solid var(--line);
+}
+.hint {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 17px/1 var(--font-mono);
+  color: var(--text);
+  .msg {
+    color: var(--accent);
+  }
+}
+.zoom {
+  flex: none;
+  display: flex;
+  align-items: center;
+  font: 12px/1 var(--font-pixel);
+  color: var(--text);
+  span {
+    padding: 0 8px;
+  }
+  button {
+    width: 30px;
+    height: 30px;
+    border: none;
+    color: inherit;
+    background: none;
+    font: inherit;
+    font-size: 16px;
+    cursor: pointer;
+    &:hover {
+      color: var(--accent);
+    }
+  }
+  span {
+    min-width: 5ch;
+    text-align: center;
+  }
+  .fit {
+    width: auto;
+    margin-left: 4px;
+    padding: 0 10px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    background: var(--panel);
+  }
+}
+
+.panes {
+  display: none;
+  flex: none;
+  gap: 4px;
+  margin-left: auto;
+  button {
+    height: 26px;
+    padding: 0 8px;
+    border: none;
+    font: 10px/1 var(--font-pixel);
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: var(--panel);
+    cursor: pointer;
+    &.on {
+      color: #1b1d24;
+      background: var(--cream);
+    }
+  }
+}
+.panes + .zoom {
+  margin-left: 0;
+}
+// Must match SMALL_LAYOUT in patch-store.ts.
+@media (max-width: 760px), (max-height: 560px) {
+  .panes {
+    display: flex;
+  }
+}
+
+@media (max-width: 700px) {
+  .bar {
+    gap: 6px;
+    padding: 2px 4px 2px 8px;
+  }
+  .hint {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+  }
+  .zoom span {
+    padding: 0 2px;
+  }
+  .zoom button {
+    width: 28px;
+  }
+}
+// Small phones: the hint gives way to the controls.
+@media (max-width: 480px) {
+  .hint.idle {
+    display: none;
+  }
+  .panes {
+    margin-left: 0;
+  }
+  .zoom {
+    margin-left: auto;
+  }
+}

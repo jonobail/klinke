@@ -1,0 +1,108 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 14px 22px;
+  background: var(--bg);
+  overflow-x: auto;
+}
+h2 {
+  margin: 0 0 12px;
+  font: 12px/1 var(--font-pixel);
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.filters {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px;
+  button {
+    padding: 7px 12px;
+    border: none;
+    font: 11px/1 var(--font-pixel);
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: var(--panel);
+    cursor: pointer;
+    &.on {
+      color: #1b1d24;
+      background: var(--cream);
+    }
+    &:hover:not(.on) {
+      color: var(--text);
+    }
+  }
+}
+.shelf {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 100px;
+  height: 128px;
+  padding: 12px 14px 10px;
+  border: none;
+  color: var(--text);
+  background: var(--panel);
+  cursor: grab;
+  &:hover {
+    box-shadow: inset 0 0 0 2px var(--line);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+  }
+}
+.frame {
+  position: relative;
+  flex: none;
+  kl-gear-view {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+  }
+}
+.name {
+  font: 11px/1 var(--font-pixel);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px), (max-height: 560px) {
+  :host {
+    gap: 10px;
+    padding: 6px 8px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  h2 {
+    display: none;
+  }
+  .filters {
+    gap: 4px;
+    button {
+      padding: 4px 6px;
+      font-size: 9px;
+    }
+  }
+  .shelf {
+    gap: 6px;
+  }
+  .tile {
+    gap: 6px;
+    min-width: 64px;
+    height: 66px;
+    padding: 6px 8px;
+  }
+  .name {
+    font-size: 9px;
+  }
+}

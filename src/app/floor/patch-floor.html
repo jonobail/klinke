@@ -1,0 +1,134 @@
+<div #scroll class="scroll" [style.--cell.px]="CELL * store.zoom()" (wheel)="wheel($event)">
+  <div
+    #sizer
+    class="sizer"
+    [style.width.px]="size().w * store.zoom()"
+    [style.height.px]="size().h * store.zoom()"
+  >
+    <div
+      #surface
+      class="surface"
+      [style.width.px]="size().w"
+      [style.height.px]="size().h"
+      [style.scale]="store.zoom()"
+      (pointerdown)="surfaceDown($event)"
+    >
+      @for (g of store.patch().gear; track g.id) {
+        <div
+          class="placed"
+          [klHoverInfo]="g.kind"
+          [attr.data-gear]="g.id"
+          [class.selected]="store.selected() === g.id"
+          [style.left.px]="g.x * CELL"
+          [style.top.px]="g.y * CELL"
+          (pointerdown)="gearDown($event, g)"
+        >
+          <span class="tag" [class.out]="g.kind === 'output'">
+            @if (g.kind === 'output') {
+              <i></i>
+            }
+            {{ GEAR[g.kind].label }}
+          </span>
+          <kl-gear-view [gear]="g" />
+          @if (store.selected() === g.id && !GEAR[g.kind].fixed) {
+            <button
+              type="button"
+              class="remove"
+              title="Remove (Delete)"
+              aria-label="Remove {{ GEAR[g.kind].label }}"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="store.remove(g.id)"
+            >
+              ×
+            </button>
+          }
+        </div>
+      }
+
+      <svg class="cables" [attr.width]="size().w" [attr.height]="size().h" aria-hidden="true">
+        @for (c of cables(); track c.id) {
+          <g class="cable" (click)="store.unplug(c.id)">
+            <title>click to unplug</title>
+            <path class="hit" [attr.d]="c.d" />
+            <path class="shade" [attr.d]="c.d" />
+            <path class="wire" [attr.d]="c.d" />
+          </g>
+        }
+        @if (pendingPath(); as d) {
+          <g class="cable pending">
+            <path class="shade" [attr.d]="d" />
+            <path class="wire" [attr.d]="d" />
+          </g>
+        }
+      </svg>
+
+      @for (j of jacks(); track j.ref.gear + j.ref.jack) {
+        <button
+          type="button"
+          class="jack"
+          [class.in]="j.dir === 'in'"
+          [class.plugged]="j.plugged"
+          [class.pending]="j.pending"
+          [style.left.px]="j.x"
+          [style.top.px]="j.y"
+          [attr.aria-label]="j.label"
+          [title]="j.label"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="jackClick($event, j)"
+        ></button>
+      }
+    </div>
+  </div>
+</div>
+
+<div class="bar">
+  <p class="hint" [class.idle]="!store.message() && !store.pendingJack()" aria-live="polite">
+    @if (store.message(); as m) {
+      <span class="msg">{{ m }}</span>
+    } @else if (store.pendingJack()) {
+      {{ coarse() ? 'tap' : 'click' }} another jack to patch · esc to cancel
+    } @else if (coarse()) {
+      pinch or double-tap gear to zoom · double-tap the floor to fit · tap jacks to patch
+    } @else {
+      drag gear onto the floor · click jacks to patch · play keys A–; · Z/X octave
+    }
+  </p>
+
+  <div class="panes" role="group" aria-label="Show">
+    <button
+      type="button"
+      [class.on]="store.shelfOpen()"
+      [attr.aria-pressed]="store.shelfOpen()"
+      title="Show the gear shelf"
+      (click)="store.shelfOpen.set(!store.shelfOpen())"
+    >
+      GEAR
+    </button>
+    <button
+      type="button"
+      [class.on]="store.tracksOpen()"
+      [attr.aria-pressed]="store.tracksOpen()"
+      title="Show the tracks"
+      (click)="store.tracksOpen.set(!store.tracksOpen())"
+    >
+      TRACKS
+    </button>
+  </div>
+
+  <div class="zoom" role="group" aria-label="Zoom">
+    <button type="button" aria-label="Zoom out" title="Zoom out" (click)="store.zoomBy(-1)">
+      −
+    </button>
+    <span>{{ zoomLabel() }}</span>
+    <button type="button" aria-label="Zoom in" title="Zoom in" (click)="store.zoomBy(1)">+</button>
+    <button
+      type="button"
+      class="fit"
+      title="Zoom to fit all the gear"
+      aria-label="Fit all gear"
+      (click)="fitAll()"
+    >
+      FIT
+    </button>
+  </div>
+</div>

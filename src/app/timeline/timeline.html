@@ -1,0 +1,108 @@
+<div class="head ruler-head">
+  <span>TRACKS</span>
+  <button
+    type="button"
+    class="add"
+    title="Add track"
+    aria-label="Add track"
+    (click)="transport.addTrack()"
+  >
+    +
+  </button>
+</div>
+<div class="ruler" title="Click to move the playhead" (click)="seek($event)">
+  @for (b of bars; track b) {
+    <span>{{ b }}</span>
+  }
+</div>
+
+@for (t of transport.tracks(); track t.id; let i = $index) {
+  <div class="head" [class.open]="transport.openTrack() === t.id">
+    <span class="name">{{ t.name }}</span>
+    @if (i > 0) {
+      <button
+        type="button"
+        class="type"
+        [class.midi]="t.type === 'midi'"
+        [title]="
+          t.type === 'midi' ? 'MIDI track: click for audio' : 'Audio track: click for MIDI notes'
+        "
+        [attr.aria-label]="t.name + ' type: ' + (t.type === 'midi' ? 'MIDI' : 'audio')"
+        (click)="toggleType(t)"
+      >
+        {{ t.type === 'midi' ? 'MIDI' : 'AUD' }}
+      </button>
+    }
+    @for (f of flags; track f.key) {
+      <button
+        type="button"
+        class="flag {{ f.key }}"
+        [class.on]="t[f.key]"
+        [title]="f.title"
+        [attr.aria-label]="f.title + ' ' + t.name"
+        [attr.aria-pressed]="t[f.key]"
+        (click)="transport.toggleFlag(i, f.key)"
+      >
+        {{ f.label }}
+      </button>
+    }
+  </div>
+  @if (t.type === 'midi') {
+    <div
+      class="lane midi"
+      [class.muted]="t.mute"
+      [class.open]="transport.openTrack() === t.id"
+      title="Click to open in the piano roll"
+      (click)="open(t)"
+    >
+      @for (n of t.notes; track n.id) {
+        <i
+          class="mini"
+          [style.left.%]="pct(n.start)"
+          [style.width.%]="pct(n.length)"
+          [style.top.%]="noteTop(t, n)"
+        ></i>
+      }
+      <select
+        class="instrument"
+        [attr.aria-label]="t.name + ' instrument'"
+        [value]="t.instrument ?? ''"
+        (click)="$event.stopPropagation()"
+        (change)="setInstrument(t, $event)"
+      >
+        <option value="">— instrument —</option>
+        @for (g of instruments(); track g.id) {
+          <option [value]="g.id" [selected]="g.id === t.instrument">
+            {{ g.label }} ({{ g.id }})
+          </option>
+        }
+      </select>
+      @if (!t.notes.length) {
+        <span class="empty">{{
+          t.arm
+            ? 'press REC and play ' + instrumentLabel(t)
+            : 'arm R and press REC, or click to draw notes'
+        }}</span>
+      }
+    </div>
+  } @else {
+    <div class="lane" [class.muted]="t.mute">
+      @for (take of t.takes; track $index; let last = $last) {
+        <div
+          class="take"
+          [class.live]="last && t.arm && transport.recording()"
+          [style.left.%]="pct(take.start)"
+          [style.width.%]="pct(take.end - take.start)"
+        >
+          <span>{{ last && t.arm && transport.recording() ? 'REC…' : t.source }}</span>
+        </div>
+      } @empty {
+        @if (i === 0) {
+          <span class="empty">mix bus · the takes you record land on the tracks below</span>
+        }
+      }
+    </div>
+  }
+}
+
+<div class="playhead" [style.--at]="playhead()"></div>

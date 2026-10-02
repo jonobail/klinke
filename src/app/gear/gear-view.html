@@ -1,0 +1,397 @@
+<ng-template #control let-p let-section="section">
+  @if (p.action) {
+    <span class="ctl rk">
+      <button
+        type="button"
+        class="act-btn"
+        [attr.aria-label]="section + ' ' + p.label"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="!preview() && engine.command(gear().id, p.action)"
+      ></button>
+      <span>{{ p.label }}</span>
+    </span>
+  } @else if (p.slider) {
+    <span class="ctl sl">
+      <kl-fader
+        [value]="value(p)"
+        [label]="section + ' ' + p.label"
+        (changed)="set(p.id, $event)"
+      />
+      <span>{{ p.label }}</span>
+    </span>
+  } @else if (p.rocker) {
+    <span class="ctl rk">
+      <kl-rocker
+        [value]="value(p)"
+        [label]="section + ' ' + p.label"
+        [colour]="p.rocker"
+        (changed)="set(p.id, $event)"
+      />
+      <span>{{ p.label }}</span>
+    </span>
+  } @else {
+    <span class="ctl" [class.sel]="p.steps" [class.bi]="p.bipolar">
+      <kl-knob
+        [value]="value(p)"
+        [label]="section + ' ' + p.label"
+        [steps]="p.steps ?? 0"
+        [valueText]="valueText(p)"
+        (changed)="set(p.id, $event)"
+      />
+      <span>{{ p.label }}</span>
+    </span>
+  }
+</ng-template>
+
+<ng-template #panelSections>
+  @for (sec of sections(); track sec.title) {
+    <section [style.flex-grow]="sec.cols">
+      <h3>
+        {{ sec.title }}
+        @if (sec.lamp) {
+          <i
+            class="lamp"
+            [class.lit]="(meterLevels()[0] ?? 0) > 0.95"
+            [title]="sec.lamp"
+            aria-hidden="true"
+          ></i>
+        }
+      </h3>
+      <div class="grid" [style.grid-template-columns]="'repeat(' + sec.cols + ', 1fr)'">
+        @for (row of sec.rows; track $index) {
+          @for (p of row; track $index) {
+            @if (p) {
+              <ng-container
+                [ngTemplateOutlet]="control"
+                [ngTemplateOutletContext]="{ $implicit: p, section: sec.title }"
+              />
+            } @else {
+              <span></span>
+            }
+          }
+        }
+      </div>
+    </section>
+  }
+</ng-template>
+
+@if (gear().kind === 'sp1200') {
+  <kl-sp1200-panel [gear]="gear()" [preview]="preview()" />
+} @else if (def().category === 'rack') {
+  <div class="rack-face">
+    <div class="rack-id">
+      <span>{{ def().label }}</span>
+      @if (def().subtitle) {
+        <small>{{ def().subtitle }}</small>
+      }
+      <button
+        type="button"
+        class="rack-bypass"
+        [class.on]="bypassed()"
+        [attr.aria-pressed]="bypassed()"
+        [attr.aria-label]="def().label + ' bypass'"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="stomp($event)"
+      >
+        <i aria-hidden="true"></i>BYPASS
+      </button>
+    </div>
+    @if (displayText(); as text) {
+      <output class="rack-display" [attr.aria-label]="def().label + ' display'">{{ text }}</output>
+    }
+    <div class="panel">
+      <ng-container [ngTemplateOutlet]="panelSections" />
+    </div>
+  </div>
+} @else if (def().category === 'synth') {
+  <div class="panel">
+    <div class="brand">
+      @if (gear().kind === 'ms20') {
+        <span>MS-20</span>
+        <small>MONOPHONIC<br />SYNTHESIZER</small>
+      } @else if (gear().kind === 'sh101') {
+        <span>SH-101</span>
+        <small>SYNTHESIZER</small>
+      } @else {
+        <span>MODEL D</span>
+        <small>MONOPHONIC<br />SYNTHESIZER</small>
+      }
+      @if (hasKeyboard() && !preview()) {
+        <em class="kbd-mark" title="The computer keyboard and MIDI play this synth">⌨ KEYS</em>
+      }
+    </div>
+    <ng-container [ngTemplateOutlet]="panelSections" />
+  </div>
+  <div class="bed">
+    @if (gear().kind !== 'sh101') {
+      <span class="jack-label in">{{ gear().kind === 'ms20' ? 'EXT SIG IN' : 'EXT IN' }}</span>
+    }
+    @if (gear().kind === 'sh101') {
+      <div class="left-hand">
+        <label class="ctl">
+          <kl-wheel
+            [value]="(bend() + 1) / 2"
+            label="BENDER"
+            [spring]="true"
+            [valueText]="bendText()"
+            (changed)="bendWheel($event)"
+          />
+          <span>BENDER</span>
+        </label>
+      </div>
+    }
+    @if (gear().kind === 'modelD') {
+      <div class="left-hand">
+        <div class="lh-switches">
+          <ng-container
+            [ngTemplateOutlet]="control"
+            [ngTemplateOutletContext]="{ $implicit: param().get('glideOn'), section: '' }"
+          />
+          <ng-container
+            [ngTemplateOutlet]="control"
+            [ngTemplateOutletContext]="{ $implicit: param().get('decayOn'), section: '' }"
+          />
+        </div>
+        <label class="ctl">
+          <kl-wheel
+            [value]="(bend() + 1) / 2"
+            label="PITCH"
+            [spring]="true"
+            [valueText]="bendText()"
+            (changed)="bendWheel($event)"
+          />
+          <span>PITCH</span>
+        </label>
+        <label class="ctl">
+          <kl-wheel [value]="value('modWheel')" label="MOD" (changed)="set('modWheel', $event)" />
+          <span>MOD</span>
+        </label>
+      </div>
+    }
+    <div
+      class="keys"
+      [style.--white-w.%]="100 / whiteKeys().length"
+      (pointerdown)="keysDown($event)"
+    >
+      @for (k of whiteKeys(); track k) {
+        <span class="white" [attr.data-step]="k" [class.down]="heldSteps().has(k)"></span>
+      }
+      @for (b of blackKeys(); track b.step) {
+        <span
+          class="black"
+          [attr.data-step]="b.step"
+          [class.down]="heldSteps().has(b.step)"
+          [style.left.%]="b.left"
+        ></span>
+      }
+    </div>
+    <span class="jack-label out">{{ gear().kind === 'ms20' ? 'SIG OUT' : 'OUT' }}</span>
+  </div>
+} @else {
+  @switch (gear().kind) {
+    @case ('mixer') {
+      <div class="strips">
+        @for (n of strips; track n) {
+          <div class="strip" [class.master]="n === 5">
+            <kl-knob
+              [value]="value('pan' + n)"
+              [label]="n === 5 ? 'BALANCE' : 'PAN ' + n"
+              (changed)="set('pan' + n, $event)"
+            />
+            <div class="fader-row">
+              <kl-fader
+                [value]="value(n === 5 ? 'master' : 'level' + n)"
+                [label]="n === 5 ? 'MAIN' : 'CH ' + n"
+                (changed)="set(n === 5 ? 'master' : 'level' + n, $event)"
+              />
+              <span class="meter">
+                @for (s of meterSegs; track s) {
+                  <i [class.lit]="lit(n - 1, s)"></i>
+                }
+              </span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+    @case ('deck') {
+      <div class="deck-screen">
+        @if (deckId(); as id) {
+          <img [src]="'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg'" alt="" draggable="false" />
+        } @else {
+          <span>NO LINK</span>
+        }
+      </div>
+      <div class="deck-side">
+        <span class="deck-name">VIDEO DECK</span>
+        <output class="deck-lcd" aria-label="VIDEO DECK display"
+          >{{ deckLines()[0] }} {{ deckLines()[1] }}</output
+        >
+        <form class="deck-link" (submit)="loadLink($event, linkInput.value)">
+          <input
+            #linkInput
+            type="url"
+            inputmode="url"
+            placeholder="Paste a YouTube link"
+            aria-label="YouTube link"
+            [value]="gear().text?.['link'] ?? ''"
+            [disabled]="preview()"
+            (pointerdown)="$event.stopPropagation()"
+          />
+          <button type="submit" class="deck-btn" (pointerdown)="$event.stopPropagation()">
+            LOAD
+          </button>
+        </form>
+        <div class="deck-transport">
+          <button
+            type="button"
+            class="deck-btn"
+            [attr.aria-label]="deckPlaying() ? 'Pause' : 'Play'"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="deckCommand('toggle')"
+          >
+            {{ deckPlaying() ? '❚❚' : '▶' }}
+          </button>
+          <button
+            type="button"
+            class="deck-btn"
+            aria-label="Stop"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="deckCommand('stop')"
+          >
+            ■
+          </button>
+          <input
+            type="range"
+            class="deck-scrub"
+            min="0"
+            step="0.1"
+            aria-label="Position"
+            [max]="deckTimes()[1] || 1"
+            [value]="deckTimes()[0]"
+            [disabled]="preview() || !deckTimes()[1]"
+            (pointerdown)="$event.stopPropagation()"
+            (change)="deckSeek($event)"
+          />
+        </div>
+        <div class="deck-controls">
+          <span class="ctl">
+            <kl-knob [value]="value('level')" label="LEVEL" (changed)="set('level', $event)" />
+            <span>LEVEL</span>
+          </span>
+          <span class="ctl rk">
+            <kl-rocker
+              [value]="value('loop')"
+              label="LOOP"
+              colour="white"
+              (changed)="set('loop', $event)"
+            />
+            <span>LOOP</span>
+          </span>
+          <span class="deck-out">OUT ▸</span>
+        </div>
+      </div>
+    }
+    @case ('mult') {
+      <span class="mult-name">MULT</span>
+      <span class="mult-legend">1 IN · 3 OUT</span>
+    }
+    @case ('mf104') {
+      <div class="mf-head">
+        <span>MF-104</span>
+        <small>ANALOG DELAY</small>
+      </div>
+      <div class="mf-knobs">
+        @for (id of mfKnobs; track id) {
+          <span class="ctl">
+            <kl-knob
+              [value]="value(id)"
+              [label]="param().get(id)!.label"
+              (changed)="set(id, $event)"
+            />
+            <span>
+              {{ param().get(id)!.label }}
+              @if (id === 'drive') {
+                <i class="bled" [class]="'bled ' + led(0)" aria-hidden="true"></i>
+              }
+              @if (id === 'feedback') {
+                <i class="bled" [class]="'bled ' + led(1)" aria-hidden="true"></i>
+              }
+            </span>
+          </span>
+        }
+      </div>
+      <div class="mf-foot">
+        <span class="ctl rk">
+          <kl-rocker
+            [value]="value('range')"
+            label="RANGE LONG"
+            colour="white"
+            (changed)="set('range', $event)"
+          />
+          <span>{{ value('range') >= 0.5 ? 'LONG' : 'SHORT' }}</span>
+        </span>
+        <button
+          class="stomp"
+          type="button"
+          [attr.aria-pressed]="!bypassed()"
+          [attr.aria-label]="'MF-104' + (bypassed() ? ' bypassed' : ' on')"
+          [title]="bypassed() ? 'bypassed: click to engage' : 'on: click to bypass'"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="stomp($event)"
+        ></button>
+        <i
+          class="bled"
+          [class]="'bled ' + (bypassed() ? 'red' : 'green')"
+          [title]="bypassed() ? 'bypass' : 'active'"
+          aria-hidden="true"
+        ></i>
+        <span class="ctl rk">
+          <kl-rocker
+            [value]="value('loop')"
+            label="EXTERNAL LOOP"
+            colour="white"
+            (changed)="set('loop', $event)"
+          />
+          <span>{{ value('loop') >= 0.5 ? 'EXT' : 'INT' }}</span>
+        </span>
+      </div>
+    }
+    @case ('output') {
+      <div class="screen">
+        <span class="rec" [class.on]="transport.recording()"></span>
+        <span class="lines"><i></i><i></i><i></i></span>
+        <kl-fader
+          class="vol"
+          [value]="value('volume')"
+          label="MAIN VOLUME"
+          (changed)="set('volume', $event)"
+        />
+        <span class="meter h">
+          @for (s of meterSegs; track s) {
+            <i [class.lit]="lit(0, s)"></i>
+          }
+        </span>
+      </div>
+    }
+    @default {
+      <div class="pedal-top">
+        <span class="led" [class.on]="!bypassed()"></span>
+        <div class="knob-row">
+          @for (p of knobs(); track p.id) {
+            <kl-knob [value]="value(p)" [label]="p.label" (changed)="set(p.id, $event)" />
+          }
+        </div>
+      </div>
+      <button
+        class="stomp"
+        type="button"
+        [attr.aria-pressed]="!bypassed()"
+        [attr.aria-label]="def().label + (bypassed() ? ' bypassed' : ' on')"
+        [title]="bypassed() ? 'bypassed: click to engage' : 'on: click to bypass'"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="stomp($event)"
+      ></button>
+    }
+  }
+}

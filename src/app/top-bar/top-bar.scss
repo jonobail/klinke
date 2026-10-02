@@ -1,0 +1,360 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 64px;
+  padding: 0 20px;
+  background: var(--bg);
+  border-bottom: 2px solid var(--line);
+  font: 12px/1 var(--font-pixel);
+  letter-spacing: 0.12em;
+  color: var(--text);
+}
+button {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.logo {
+  width: 34px;
+  height: 34px;
+  shape-rendering: crispEdges;
+}
+h1 {
+  margin: 0;
+  font: 24px/1 var(--font-pixel);
+  letter-spacing: 0.2em;
+}
+
+.menus {
+  display: flex;
+  gap: 4px;
+}
+.menu {
+  position: relative;
+  > button {
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    &:hover,
+    &.open {
+      background: var(--panel);
+    }
+  }
+  ul {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    min-width: 220px;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    background: var(--panel);
+    box-shadow:
+      0 0 0 2px var(--line),
+      6px 6px 0 #00000066;
+  }
+  li button {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    border: none;
+    text-align: left;
+    background: none;
+    font: 16px/1 var(--font-mono);
+    letter-spacing: 0;
+    &:hover,
+    &:focus-visible {
+      color: #1b1d24;
+      background: var(--cream);
+      outline: none;
+    }
+  }
+}
+
+.transport {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.t {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: none;
+  background: var(--panel);
+  color: var(--text);
+  svg {
+    width: 18px;
+    height: 18px;
+    shape-rendering: crispEdges;
+  }
+  &:hover {
+    box-shadow: inset 0 0 0 2px var(--line);
+  }
+  &.play {
+    color: var(--green);
+  }
+  &.play.on {
+    background: #1f3a2a;
+  }
+  &.stop {
+    color: var(--cream);
+  }
+  &.rec {
+    color: var(--accent);
+  }
+  &.rec.on {
+    background: #4a1d22;
+  }
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  height: 42px;
+  padding: 0 22px;
+  background: #121318;
+  box-shadow: inset 0 0 0 2px var(--line);
+  font: 22px/1 var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.pos {
+  min-width: 7ch;
+  font-size: 30px;
+  color: var(--green);
+}
+.bpm input {
+  width: 4.2ch;
+  padding: 0;
+  border: none;
+  font: inherit;
+  text-align: right;
+  color: inherit;
+  background: none;
+  -moz-appearance: textfield;
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+  button {
+    height: 42px;
+    padding: 0 20px;
+    border: none;
+  }
+}
+.midi {
+  align-self: center;
+  padding: 6px 8px;
+  font-size: 10px;
+  color: var(--muted);
+  box-shadow: inset 0 0 0 2px var(--line);
+  cursor: help;
+  &.ready {
+    color: var(--green);
+    box-shadow: inset 0 0 0 2px #1f3a2a;
+  }
+}
+.audio {
+  background: var(--panel);
+  // Sound should be on but the browser hasn't let it start yet: invite a tap.
+  &.blocked {
+    color: var(--cream);
+    animation: audio-blocked 1s steps(2) infinite;
+  }
+  .spk {
+    display: none;
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+    vertical-align: -1px;
+    shape-rendering: crispEdges;
+  }
+  color: var(--muted);
+  &.on {
+    color: var(--green);
+  }
+}
+.save {
+  background: var(--panel);
+  &.dirty {
+    color: var(--cream);
+  }
+}
+.export {
+  color: #fff;
+  background: var(--accent);
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+// The one-list menu that stands in for FILE / EDIT / PATCH / VIEW on narrow screens.
+.compact {
+  display: none;
+  > button {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    background: var(--panel);
+    svg {
+      width: 16px;
+      height: 16px;
+      shape-rendering: crispEdges;
+    }
+  }
+  ul {
+    // Fixed, so the bar scrolling sideways on a phone can't clip it.
+    position: fixed;
+    top: auto;
+    left: 8px;
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+    margin-top: 6px;
+  }
+  .group {
+    padding: 10px 10px 4px;
+    font: 10px/1 var(--font-pixel);
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+}
+
+@media (max-width: 1100px) {
+  :host {
+    gap: 16px;
+  }
+  .menus {
+    display: none;
+  }
+  .compact {
+    display: block;
+  }
+}
+
+// Phones and narrow tablets: everything that matters on one row, the rest in the menu.
+@media (max-width: 900px) {
+  :host {
+    gap: 8px;
+    height: 52px;
+    padding: 0 8px;
+    font-size: 10px;
+    // Never wider than the screen: if it still doesn't fit, the bar scrolls sideways.
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .brand {
+    flex: none;
+  }
+  .logo {
+    width: 26px;
+    height: 26px;
+  }
+  h1,
+  .meter-sig,
+  .midi,
+  .export {
+    display: none;
+  }
+  .compact > button,
+  .t {
+    width: 36px;
+    height: 36px;
+  }
+  .transport {
+    flex: none;
+    gap: 4px;
+    margin-left: 0;
+  }
+  .t svg {
+    width: 14px;
+    height: 14px;
+  }
+  .counter {
+    flex: none;
+    gap: 8px;
+    height: 36px;
+    padding: 0 8px;
+    font-size: 18px;
+  }
+  .pos {
+    min-width: 0;
+    font-size: 22px;
+  }
+  .actions {
+    flex: none;
+    gap: 6px;
+    button {
+      height: 36px;
+      padding: 0 10px;
+    }
+  }
+}
+
+// Small phones: SAVE and rewind live in the menu (and STOP twice rewinds), AUDIO shrinks.
+@media (max-width: 480px) {
+  :host {
+    gap: 6px;
+    padding: 0 6px;
+  }
+  .brand,
+  .rew,
+  .actions .save,
+  .long {
+    display: none;
+  }
+  .transport {
+    gap: 3px;
+  }
+  .compact > button,
+  .t {
+    width: 34px;
+  }
+  .counter {
+    gap: 6px;
+    font-size: 16px;
+  }
+  .pos {
+    font-size: 20px;
+  }
+  .bpm input {
+    width: 3.2ch;
+  }
+  .audio .spk {
+    display: inline-block;
+  }
+  .actions {
+    margin-left: auto;
+    button {
+      padding: 0 8px;
+    }
+  }
+}
+
+@keyframes audio-blocked {
+  50% {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+}
