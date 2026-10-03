@@ -19,6 +19,7 @@ import {
   freeSpot,
   removeGear,
   setParam,
+  setText,
   signalOrder,
 } from '../src/app/core/patch.ts';
 import type { Patch } from '../src/app/core/patch.ts';
@@ -239,4 +240,30 @@ test('stored patches round-trip and junk is rejected', () => {
   odd.gear.push({ id: 'zz', kind: 'theremin', x: 0, y: 0 });
   odd.cables.push({ from: { gear: 'zz', jack: 'out' }, to: { gear: 'g0', jack: 'in' } });
   assert.equal(parsePatch(JSON.stringify(odd))!.gear.length, p.gear.length);
+});
+
+test('text settings (e.g. the SH-101 sequence) save with the patch, capped and type-checked', () => {
+  let p = addGear(emptyPatch(), 'sh101', 1, 1);
+  const sh = p.gear[1].id;
+  p = setText(p, sh, 'sequence', '[48,null,52]');
+  assert.equal(parsePatch(JSON.stringify(p))!.gear[1].text?.['sequence'], '[48,null,52]');
+  assert.equal(setText(p, sh, 'sequence', 'x'.repeat(2000)).gear[1].text?.['sequence'].length, 500);
+  const junk = JSON.parse(JSON.stringify(p));
+  junk.gear[1].text = { sequence: 42, ok: 'yes' };
+  assert.deepEqual(parsePatch(JSON.stringify(junk))!.gear[1].text, { ok: 'yes' });
+});
+
+test('patches with gear that no longer exists load without it (and its cables)', () => {
+  const p = emptyPatch();
+  const old = {
+    ...p,
+    gear: [...p.gear, { id: 'g9', kind: 'deck', x: 1, y: 1, params: {}, text: { link: 'x' } }],
+    cables: [{ id: 'c1', from: { gear: 'g9', jack: 'out' }, to: { gear: 'g0', jack: 'in' } }],
+  };
+  const back = parsePatch(JSON.stringify(old))!;
+  assert.deepEqual(
+    back.gear.map((g) => g.kind),
+    ['output'],
+  );
+  assert.equal(back.cables.length, 0);
 });

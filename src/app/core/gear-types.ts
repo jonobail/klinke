@@ -24,14 +24,13 @@ export type GearKind =
   | 'sp1200'
   | 'mixer'
   | 'mult'
-  | 'deck'
   | 'overdrive'
   | 'delay'
   | 'reverb'
   | 'filter'
   | 'output'
   | DeviceKind;
-export type GearCategory = 'synth' | 'source' | 'pedal' | 'mixer' | 'rack' | 'output';
+export type GearCategory = 'synth' | 'pedal' | 'mixer' | 'rack' | 'output';
 export interface JackDef {
   id: string;
   dir: 'in' | 'out';

@@ -85,6 +85,9 @@ export class Sh101Unit extends Unit implements Playable {
   private readonly vcaGate = this.ctx.createGain();
   private readonly bendVco = this.ctx.createGain();
   private readonly bendVcf = this.ctx.createGain();
+  /** Bender pushed forward: the LFO into the VCO at the LFO MOD depth. */
+  private readonly modPush = this.ctx.createGain();
+  private pushed = false;
 
   constructor(ctx: AudioContext) {
     super(ctx);
@@ -130,12 +133,15 @@ export class Sh101Unit extends Unit implements Playable {
     this.noiseModFilter.frequency.value = 40;
     this.noise.connect(this.noiseModFilter).connect(this.noiseModGate).connect(this.mod);
     this.mod.connect(this.vcoMod);
+    this.modPush.gain.value = 0;
+    this.mod.connect(this.modPush);
     this.mod.connect(this.vcfMod).connect(this.filterCv);
     this.mod.connect(this.pwmLfo).connect(this.pwIn);
 
     // Pitch modulation into both oscillators
     for (const osc of [this.saw, this.sub]) {
       this.vcoMod.connect(osc.detune);
+      this.modPush.connect(osc.detune);
       this.bendVco.connect(osc.detune);
     }
     this.bend.connect(this.bendVco);
@@ -208,6 +214,7 @@ export class Sh101Unit extends Unit implements Playable {
     glide(this.vcoMod.gain, s.vcoMod, ctx);
     glide(this.bendVco.gain, s.bendVco, ctx);
     glide(this.bendVcf.gain, s.bendVcf, ctx);
+    glide(this.modPush.gain, this.pushed ? s.lfoMod : 0, ctx);
     glide(this.volume.gain, s.volume, ctx);
 
     // LOAD starts a new sequence; leaving ARP / SEQ modes silences what they were playing.
@@ -282,6 +289,11 @@ export class Sh101Unit extends Unit implements Playable {
   }
 
   override command(name: string) {
+    if (name === 'modOn' || name === 'modOff') {
+      this.pushed = name === 'modOn';
+      glide(this.modPush.gain, this.pushed ? this.s.lfoMod : 0, this.ctx, 0.03);
+      return;
+    }
     // REST: a silent step while loading the sequence.
     if (name === 'rest' && this.s.seq === 'load') this.saveSequence(loadStep(this.sequence, null));
   }

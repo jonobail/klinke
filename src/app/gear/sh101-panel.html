@@ -1,0 +1,281 @@
+<ng-template #slider let-id let-label="label">
+  <span class="sl">
+    <span class="scale" aria-hidden="true"></span>
+    <kl-fader [value]="value(id)" [label]="label" (changed)="set(id, $event)" />
+    <span class="lbl">{{ param(id).label }}</span>
+  </span>
+</ng-template>
+
+<ng-template #switch let-s>
+  <div class="sw" role="radiogroup" [attr.aria-label]="s.label">
+    <span class="slot" aria-hidden="true"></span>
+    <div class="pos">
+      @for (p of s.positions; track p.name) {
+        <button
+          type="button"
+          role="radio"
+          [class.on]="isOn(s, p.value)"
+          [attr.aria-checked]="isOn(s, p.value)"
+          [attr.aria-label]="s.label + ' ' + p.name"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="set(s.id, p.value)"
+        >
+          {{ p.name }}
+        </button>
+      }
+    </div>
+  </div>
+</ng-template>
+
+<!-- The jack strip along the back -->
+<div class="jacks" aria-hidden="true">
+  <span>MODULATION GRIP</span>
+  <span class="right">CV IN·OUT · EXT CLK · HOLD · GATE IN·OUT · PHONES · OUTPUT</span>
+</div>
+
+<!-- Synthesis sections -->
+<div class="top">
+  <div class="tune">
+    <kl-knob
+      class="big"
+      [value]="value('tune')"
+      label="TUNE"
+      [valueText]="((value('tune') * 2 - 1) * 50).toFixed(0) + ' cent'"
+      (changed)="set('tune', $event)"
+    />
+    <span class="lbl">TUNE</span>
+  </div>
+  <section class="modulator">
+    <h3>MODULATOR</h3>
+    <div class="row">
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'lfoRate', label: 'LFO RATE' }"
+      />
+      <span class="rot">
+        <kl-knob
+          [value]="value('lfoWave')"
+          label="MODULATOR WAVE FORM"
+          [steps]="4"
+          [valueText]="optionText('lfoWave')"
+          (changed)="set('lfoWave', $event)"
+        />
+        <span class="lbl">WAVE FORM</span>
+      </span>
+    </div>
+  </section>
+  <section class="vco">
+    <h3>VCO</h3>
+    <div class="row">
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'vcoMod', label: 'VCO MOD' }"
+      />
+      <span class="rot">
+        <kl-knob
+          [value]="value('range')"
+          label="VCO RANGE"
+          [steps]="4"
+          [valueText]="optionText('range')"
+          (changed)="set('range', $event)"
+        />
+        <span class="lbl">RANGE</span>
+      </span>
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'pulseWidth', label: 'PULSE WIDTH' }"
+      />
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: pwmSwitch }" />
+    </div>
+  </section>
+  <section class="mixer">
+    <h3>SOURCE MIXER</h3>
+    <div class="row">
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'pulse', label: 'PULSE LEVEL' }"
+      />
+      <ng-container *ngTemplateOutlet="slider; context: { $implicit: 'saw', label: 'SAW LEVEL' }" />
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'sub', label: 'SUB OSC LEVEL' }"
+      />
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: subSwitch }" />
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'noise', label: 'NOISE LEVEL' }"
+      />
+    </div>
+  </section>
+  <section class="vcf">
+    <h3>VCF</h3>
+    <div class="row">
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'cutoff', label: 'VCF FREQ' }"
+      />
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'resonance', label: 'VCF RES' }"
+      />
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'vcfEnv', label: 'VCF ENV' }"
+      />
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'vcfMod', label: 'VCF MOD' }"
+      />
+      <ng-container
+        *ngTemplateOutlet="slider; context: { $implicit: 'vcfKybd', label: 'VCF KYBD' }"
+      />
+    </div>
+  </section>
+  <section class="vca">
+    <h3>VCA</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: vcaSwitch }" />
+    </div>
+  </section>
+  <section class="env">
+    <h3>ENV</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: trigSwitch }" />
+      <ng-container *ngTemplateOutlet="slider; context: { $implicit: 'attack', label: 'ENV A' }" />
+      <ng-container *ngTemplateOutlet="slider; context: { $implicit: 'decay', label: 'ENV D' }" />
+      <ng-container *ngTemplateOutlet="slider; context: { $implicit: 'sustain', label: 'ENV S' }" />
+      <ng-container *ngTemplateOutlet="slider; context: { $implicit: 'release', label: 'ENV R' }" />
+    </div>
+  </section>
+</div>
+
+<!-- Function buttons, logo -->
+<div class="functions">
+  <span class="power"><i class="led on"></i>POWER</span>
+  <div class="group">
+    <div class="btns">
+      <button
+        type="button"
+        [class.on]="seqIs('load')"
+        title="Sequencer LOAD: play notes to store them"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="seqPress('load')"
+      >
+        <i class="led"></i><span>LOAD</span>
+      </button>
+      <button
+        type="button"
+        [class.on]="seqIs('play')"
+        title="Sequencer PLAY (hold a key to transpose)"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="seqPress('play')"
+      >
+        <i class="led"></i><span>PLAY</span>
+      </button>
+    </div>
+    <span class="cap">SEQUENCER</span>
+  </div>
+  <div class="group">
+    <div class="btns">
+      <button
+        type="button"
+        [class.on]="arpIs(1)"
+        title="Arpeggio DOWN"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="arpPress(1)"
+      >
+        <i class="led"></i><span>DOWN</span>
+      </button>
+      <button
+        type="button"
+        [class.on]="arpIs(2 / 3)"
+        title="Arpeggio UP & DOWN"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="arpPress(2 / 3)"
+      >
+        <i class="led"></i><span>U&amp;D</span>
+      </button>
+      <button
+        type="button"
+        [class.on]="arpIs(1 / 3)"
+        title="Arpeggio UP"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="arpPress(1 / 3)"
+      >
+        <i class="led"></i><span>UP</span>
+      </button>
+    </div>
+    <span class="cap">ARPEGGIO</span>
+  </div>
+  <div class="group">
+    <div class="btns">
+      <button
+        type="button"
+        [class.on]="value('hold') >= 0.5"
+        title="HOLD: latch notes / the arpeggio chord"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="set('hold', value('hold') >= 0.5 ? 0 : 1)"
+      >
+        <i class="led"></i><span>HOLD</span>
+      </button>
+      <button
+        type="button"
+        title="KEY TRANSPOSE (REST while loading a sequence)"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="keyTranspose()"
+      >
+        <i class="led"></i><span>KEY TRANS</span>
+      </button>
+    </div>
+    <span class="cap">&nbsp;</span>
+  </div>
+  <div class="logo">
+    @if (hasKeyboard() && !preview()) {
+      <em class="kbd-mark" title="The computer keyboard and MIDI play this synth">⌨ KEYS</em>
+    }
+    <span>SH-101</span>
+  </div>
+</div>
+
+<!-- Left-hand controls and the keyboard -->
+<div class="bottom">
+  <div class="left">
+    <div class="knobs">
+      <span class="rot">
+        <kl-knob [value]="value('volume')" label="VOLUME" (changed)="set('volume', $event)" />
+        <span class="lbl">VOLUME</span>
+      </span>
+      <span class="rot">
+        <kl-knob
+          [value]="value('portaTime')"
+          label="PORTAMENTO"
+          (changed)="set('portaTime', $event)"
+        />
+        <span class="lbl">PORTAMENTO</span>
+      </span>
+    </div>
+    <div class="lh-row">
+      <div class="bender-depths">
+        <ng-container
+          *ngTemplateOutlet="slider; context: { $implicit: 'bendVco', label: 'BENDER VCO' }"
+        />
+        <ng-container
+          *ngTemplateOutlet="slider; context: { $implicit: 'bendVcf', label: 'BENDER VCF' }"
+        />
+        <ng-container
+          *ngTemplateOutlet="slider; context: { $implicit: 'lfoMod', label: 'BENDER LFO MOD' }"
+        />
+      </div>
+      <div class="lh-switches">
+        <ng-container *ngTemplateOutlet="switch; context: { $implicit: portaSwitch }" />
+        <ng-container *ngTemplateOutlet="switch; context: { $implicit: transposeSwitch }" />
+      </div>
+    </div>
+    <div
+      class="bender"
+      role="slider"
+      tabindex="0"
+      aria-label="Bender (drag sideways to bend, push up for LFO MOD)"
+      aria-valuemin="-100"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="(bend() * 100).toFixed(0)"
+      title="BENDER: drag sideways to bend, push up for LFO MOD"
+      (pointerdown)="benderDown($event)"
+      (keydown)="benderKey($event)"
+    >
+      <span class="lever" [style.left.%]="50 + bend() * 42"></span>
+    </div>
+    <span class="lbl bender-lbl">BENDER</span>
+  </div>
+  <kl-keyboard [gearId]="gear().id" [layout]="keyboard()" [preview]="preview()" />
+</div>

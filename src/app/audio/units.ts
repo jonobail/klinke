@@ -2,7 +2,6 @@
 
 import { type DeviceKind, type GearKind } from '../core/gear';
 import { driveCurve, expMap, faderGain, mixSends, panFor, reverbImpulse } from '../core/sound';
-import { DeckUnit } from './deck-unit';
 import { DEVICE_UNITS } from './devices';
 import { Mf104Unit } from './mf104-unit';
 import { ModelDUnit } from './modeld-unit';
@@ -255,8 +254,6 @@ export function createUnit(kind: GearKind, ctx: AudioContext): Unit {
       return new Sp1200Unit(ctx);
     case 'mult':
       return new MultUnit(ctx);
-    case 'deck':
-      return new DeckUnit(ctx);
     case 'overdrive':
       return new OverdriveUnit(ctx);
     case 'delay':

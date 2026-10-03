@@ -68,6 +68,8 @@ export function sh101Settings(p: Params) {
     hold: p['hold'] >= 0.5,
     bendVco: p['bendVco'] * 1200, // bender to VCO: up to ±1 octave
     bendVcf: p['bendVcf'] * 4800,
+    /** LFO MOD: vibrato depth added while the bender lever is pushed forward (cents). */
+    lfoMod: (p['lfoMod'] ?? 0) * (p['lfoMod'] ?? 0) * 600,
     volume: p['volume'] * p['volume'],
   };
 }

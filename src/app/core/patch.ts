@@ -22,7 +22,7 @@ export interface Gear {
   x: number;
   y: number;
   params: Record<string, number>;
-  /** Text settings, e.g. the VIDEO DECK's link. Most gear has none. */
+  /** Text settings, e.g. the SH-101's stored sequence. Most gear has none. */
   text?: Record<string, string>;
 }
 

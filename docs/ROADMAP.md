@@ -226,22 +226,6 @@ as its usual chain.
 - [ ] Split the gear panels (gear-view) into one component per instrument; its stylesheet is
       now 9 kB
 
-## M2g VIDEO DECK ✅
-
-A YouTube player as a patchable sound source, mainly for sampling into the SP-1200. A page can't
-tap an embedded YouTube player's audio, so a small helper (`server/media-server.mjs`, no npm
-dependencies) looks up the audio-only stream with yt-dlp and relays it same-origin in ≤ 10 MB HTTP
-ranges (so seeking works). Nothing is written to disk; the link is the only thing saved (as the
-deck's `text.link`, a new per-gear text setting).
-
-- [x] Link parsing (watch / youtu.be / shorts / embed / music, `t=` start), title and duration
-- [x] Play / pause, stop (back to the start time), seek bar, LOOP, LEVEL; thumbnail and display
-- [x] OUT jack into anything; heard only through the patch
-- [x] "Helper offline" / "Can't play this video" messages; live streams refused
-- [ ] Waveform / cue points for picking the bit to sample
-- [ ] The helper is for local use: no rate limiting or auth (su700's helper has both if it's ever
-      hosted)
-
 ## M3 Record & arrange
 
 MIDI tracks (done): a per-track AUD / MIDI switch; MIDI tracks play an instrument on the floor

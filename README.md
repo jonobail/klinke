@@ -12,9 +12,6 @@ the sound engine work now; recording audio onto the timeline is the next milesto
 npm install
 npm start      # http://localhost:4200
 npm run start:tailnet   # same, reachable from other devices on the tailnet
-npm run server          # media helper for the VIDEO DECK (127.0.0.1:3800; /api is proxied to it)
-npm run start:all       # helper + app on the tailnet together
-npm run setup:tools     # one-time: yt-dlp and deno into server/bin (skips any on PATH)
 npm test       # unit tests for src/app/core (node --test)
 npm run build
 ```
@@ -57,11 +54,6 @@ npm run build
   5 and set the length with slider 1, then key 9 to sample now or 7 to arm (sampling starts when
   the input passes the threshold set with SAMPLE 4). SET-UP 19 truncates and loops, SET-UP 20
   deletes. The LCD prompts you through each step.
-- **VIDEO DECK:** paste a YouTube link (any form: watch, youtu.be, shorts; `t=` start times
-  work), press LOAD, then ▶. Its OUT jack is the video's sound: patch it into the SP-1200's
-  SAMPLE IN (or a MULT, to hear it and sample it at once), through effects, or to the mixer.
-  Needs the media helper running (`npm run server`); it relays the audio stream as it plays and
-  stores nothing.
 - **Rack effects:** under RACK in the inventory, twelve rack processors (harmonizer, delays,
   reverbs, multi-effects). Patch them like pedals; the display shows the program and setting,
   and BYPASS passes the signal dry. Each is documented in `docs/devices/`.

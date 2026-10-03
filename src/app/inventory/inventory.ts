@@ -20,7 +20,7 @@ const TILE_SMALL = { h: 40, w: 96 };
 })
 export class Inventory {
   private readonly store = inject(PatchStore);
-  protected readonly filters: Filter[] = ['all', 'synth', 'source', 'pedal', 'rack', 'mixer'];
+  protected readonly filters: Filter[] = ['all', 'synth', 'pedal', 'rack', 'mixer'];
   protected readonly filter = signal<Filter>('all');
   private readonly small = signal(false);
   protected readonly items = computed(() =>

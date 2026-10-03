@@ -256,8 +256,9 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
     label: 'SH-101',
     category: 'synth',
     w: 18,
-    h: 6,
-    jacks: [{ id: 'out', dir: 'out', fx: 0.985, fy: 0.98 }],
+    h: 10,
+    // OUTPUT sits in the jack strip along the back, top right, as on the hardware.
+    jacks: [{ id: 'out', dir: 'out', fx: 0.975, fy: 0.03, label: 'OUTPUT' }],
     params: [
       p('volume', 'VOLUME', 0.7),
       p('portaTime', 'PORTA', 0.2),
@@ -265,6 +266,7 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
       sel('transpose', 'TRANSPOSE', ['L', 'M', 'H'], 1),
       { ...p('bendVco', 'B.VCO', 0.2), slider: true },
       { ...p('bendVcf', 'B.VCF', 0), slider: true },
+      { ...p('lfoMod', 'LFO MOD', 0.3), slider: true },
       sel('arp', 'ARP', ['OFF', 'UP', 'U&D', 'DOWN'], 0),
       sel('seq', 'SEQ', ['OFF', 'LOAD', 'PLAY'], 0),
       rocker('hold', 'HOLD', 'white', false),
@@ -293,34 +295,7 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
       { ...p('release', 'R', 0.25), slider: true },
       sel('envTrigger', 'TRIG', ['GATE+TRIG', 'GATE', 'LFO'], 0),
     ],
-    sections: [
-      {
-        title: 'CONTROL',
-        rows: [
-          ['bendVco', 'bendVcf', 'volume'],
-          ['portaMode', 'portaTime', 'transpose'],
-        ],
-      },
-      {
-        title: 'ARP / SEQ',
-        rows: [
-          ['arp', 'seq'],
-          ['hold', 'rest'],
-        ],
-      },
-      { title: 'MODULATOR', rows: [['lfoRate'], ['lfoWave']] },
-      {
-        title: 'VCO',
-        rows: [
-          ['vcoMod', 'pulseWidth'],
-          ['range', 'pwmSource', 'tune'],
-        ],
-      },
-      { title: 'SOURCE MIXER', rows: [['pulse', 'saw', 'sub', 'noise'], ['subMode']] },
-      { title: 'VCF', rows: [['cutoff', 'resonance', 'vcfEnv', 'vcfMod', 'vcfKybd']] },
-      { title: 'VCA', rows: [['vcaMode']] },
-      { title: 'ENV', rows: [['attack', 'decay', 'sustain', 'release'], ['envTrigger']] },
-    ],
+    // The panel is its own component (gear/sh101-panel), laid out like the hardware.
     keyboard: { from: -7, keys: 32 }, // F–C, 32 keys (spec)
   },
   // SP-1200 sampling drum machine, after the owner's manual. Global controls, then per sound
@@ -387,18 +362,6 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
     ],
     params: [],
   },
-  // Plays a YouTube video's audio (relayed by the media helper, server/media-server.mjs) out of
-  // its OUT jack, so it can be patched anywhere, e.g. into the SP-1200's SAMPLE IN. The link is
-  // a text setting (`text.link`); no audio is stored.
-  deck: {
-    kind: 'deck',
-    label: 'VIDEO DECK',
-    category: 'source',
-    w: 8,
-    h: 4,
-    jacks: [{ id: 'out', dir: 'out', fx: 0.97, fy: 0.96 }],
-    params: [p('level', 'LEVEL', 0.75), rocker('loop', 'LOOP', 'white', false)],
-  },
   output: {
     kind: 'output',
     label: 'MAIN • REC',
@@ -423,7 +386,6 @@ export const INVENTORY: GearKind[] = [
   'sh101',
   'mixer',
   'sp1200',
-  'deck',
   'mult',
   'mf104',
   'overdrive',

@@ -77,6 +77,8 @@
 
 @if (gear().kind === 'sp1200') {
   <kl-sp1200-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'sh101') {
+  <kl-sh101-panel [gear]="gear()" [preview]="preview()" />
 } @else if (def().category === 'rack') {
   <div class="rack-face">
     <div class="rack-id">
@@ -109,9 +111,6 @@
       @if (gear().kind === 'ms20') {
         <span>MS-20</span>
         <small>MONOPHONIC<br />SYNTHESIZER</small>
-      } @else if (gear().kind === 'sh101') {
-        <span>SH-101</span>
-        <small>SYNTHESIZER</small>
       } @else {
         <span>MODEL D</span>
         <small>MONOPHONIC<br />SYNTHESIZER</small>
@@ -123,23 +122,7 @@
     <ng-container [ngTemplateOutlet]="panelSections" />
   </div>
   <div class="bed">
-    @if (gear().kind !== 'sh101') {
-      <span class="jack-label in">{{ gear().kind === 'ms20' ? 'EXT SIG IN' : 'EXT IN' }}</span>
-    }
-    @if (gear().kind === 'sh101') {
-      <div class="left-hand">
-        <label class="ctl">
-          <kl-wheel
-            [value]="(bend() + 1) / 2"
-            label="BENDER"
-            [spring]="true"
-            [valueText]="bendText()"
-            (changed)="bendWheel($event)"
-          />
-          <span>BENDER</span>
-        </label>
-      </div>
-    }
+    <span class="jack-label in">{{ gear().kind === 'ms20' ? 'EXT SIG IN' : 'EXT IN' }}</span>
     @if (gear().kind === 'modelD') {
       <div class="left-hand">
         <div class="lh-switches">
@@ -168,23 +151,7 @@
         </label>
       </div>
     }
-    <div
-      class="keys"
-      [style.--white-w.%]="100 / whiteKeys().length"
-      (pointerdown)="keysDown($event)"
-    >
-      @for (k of whiteKeys(); track k) {
-        <span class="white" [attr.data-step]="k" [class.down]="heldSteps().has(k)"></span>
-      }
-      @for (b of blackKeys(); track b.step) {
-        <span
-          class="black"
-          [attr.data-step]="b.step"
-          [class.down]="heldSteps().has(b.step)"
-          [style.left.%]="b.left"
-        ></span>
-      }
-    </div>
+    <kl-keyboard [gearId]="gear().id" [layout]="def().keyboard!" [preview]="preview()" />
     <span class="jack-label out">{{ gear().kind === 'ms20' ? 'SIG OUT' : 'OUT' }}</span>
   </div>
 } @else {
@@ -212,84 +179,6 @@
             </div>
           </div>
         }
-      </div>
-    }
-    @case ('deck') {
-      <div class="deck-screen">
-        @if (deckId(); as id) {
-          <img [src]="'https://i.ytimg.com/vi/' + id + '/mqdefault.jpg'" alt="" draggable="false" />
-        } @else {
-          <span>NO LINK</span>
-        }
-      </div>
-      <div class="deck-side">
-        <span class="deck-name">VIDEO DECK</span>
-        <output class="deck-lcd" aria-label="VIDEO DECK display"
-          >{{ deckLines()[0] }} {{ deckLines()[1] }}</output
-        >
-        <form class="deck-link" (submit)="loadLink($event, linkInput.value)">
-          <input
-            #linkInput
-            type="url"
-            inputmode="url"
-            placeholder="Paste a YouTube link"
-            aria-label="YouTube link"
-            [value]="gear().text?.['link'] ?? ''"
-            [disabled]="preview()"
-            (pointerdown)="$event.stopPropagation()"
-          />
-          <button type="submit" class="deck-btn" (pointerdown)="$event.stopPropagation()">
-            LOAD
-          </button>
-        </form>
-        <div class="deck-transport">
-          <button
-            type="button"
-            class="deck-btn"
-            [attr.aria-label]="deckPlaying() ? 'Pause' : 'Play'"
-            (pointerdown)="$event.stopPropagation()"
-            (click)="deckCommand('toggle')"
-          >
-            {{ deckPlaying() ? '❚❚' : '▶' }}
-          </button>
-          <button
-            type="button"
-            class="deck-btn"
-            aria-label="Stop"
-            (pointerdown)="$event.stopPropagation()"
-            (click)="deckCommand('stop')"
-          >
-            ■
-          </button>
-          <input
-            type="range"
-            class="deck-scrub"
-            min="0"
-            step="0.1"
-            aria-label="Position"
-            [max]="deckTimes()[1] || 1"
-            [value]="deckTimes()[0]"
-            [disabled]="preview() || !deckTimes()[1]"
-            (pointerdown)="$event.stopPropagation()"
-            (change)="deckSeek($event)"
-          />
-        </div>
-        <div class="deck-controls">
-          <span class="ctl">
-            <kl-knob [value]="value('level')" label="LEVEL" (changed)="set('level', $event)" />
-            <span>LEVEL</span>
-          </span>
-          <span class="ctl rk">
-            <kl-rocker
-              [value]="value('loop')"
-              label="LOOP"
-              colour="white"
-              (changed)="set('loop', $event)"
-            />
-            <span>LOOP</span>
-          </span>
-          <span class="deck-out">OUT ▸</span>
-        </div>
       </div>
     }
     @case ('mult') {

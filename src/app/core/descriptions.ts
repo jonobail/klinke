@@ -31,11 +31,6 @@ export const DESCRIPTIONS: Record<GearKind, GearInfo> = {
     purpose:
       'Record short sounds from SAMPLE IN at a gritty 12-bit / 26 kHz, then play them from eight pads with per-pad pitch, decay and level.',
   },
-  deck: {
-    what: 'YouTube audio player',
-    purpose:
-      'Paste a YouTube link and play its sound out of the OUT jack: into the SP-1200 to sample it, through effects, or to the mixer. Nothing is downloaded or kept.',
-  },
   mixer: {
     what: '4-channel mixer',
     purpose: 'Combines up to four sources with level and pan for each, then sends one mix out.',

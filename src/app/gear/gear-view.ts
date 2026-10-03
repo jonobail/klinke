@@ -2,21 +2,18 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { GEAR, type ParamDef } from '../core/gear';
 import { CELL, type Gear } from '../core/patch';
-import { videoId } from '../core/youtube';
 import { AudioEngine } from '../audio/audio-engine';
 import { PatchStore } from '../patch-store';
 import { Transport } from '../transport';
 import { Fader, Knob, Rocker, Wheel } from './controls';
+import { Keyboard } from './keyboard';
+import { Sh101Panel } from './sh101-panel';
 import { Sp1200Panel } from './sp1200-panel';
-
-/** Pitch classes of the black keys. */
-const BLACK = new Set([1, 3, 6, 8, 10]);
-const isBlack = (step: number) => BLACK.has(((step % 12) + 12) % 12);
 
 /** Draws one piece of gear at 1:1 floor scale. In preview mode (the inventory) it's inert. */
 @Component({
   selector: 'kl-gear-view',
-  imports: [NgTemplateOutlet, Knob, Fader, Rocker, Wheel, Sp1200Panel],
+  imports: [NgTemplateOutlet, Knob, Fader, Rocker, Wheel, Sp1200Panel, Keyboard, Sh101Panel],
   host: {
     '[class]': "'gear ' + gear().kind + ' ' + def().category",
     '[style.--face]': 'def().face?.panel',
@@ -55,21 +52,6 @@ export class GearView {
       return { ...s, rows: padded, cols };
     });
   });
-  /** The keyboard's keys, as semitone steps from the base C. */
-  private readonly steps = computed(() => {
-    const kb = this.def().keyboard ?? { from: 0, keys: 0 };
-    return Array.from({ length: kb.keys }, (_, i) => kb.from + i);
-  });
-  protected readonly whiteKeys = computed(() => this.steps().filter((s) => !isBlack(s)));
-  protected readonly blackKeys = computed(() => {
-    const whites = this.whiteKeys().length;
-    return this.steps()
-      .filter(isBlack)
-      .map((step) => ({
-        step,
-        left: (this.whiteKeys().filter((w) => w < step).length / whites) * 100,
-      }));
-  });
   /** What a rack unit's display shows. */
   protected readonly displayText = computed(() => this.def().display?.(this.gear().params) ?? '');
   /** The synth the computer keyboard plays (marked on its panel). */
@@ -78,11 +60,6 @@ export class GearView {
   protected readonly bendText = computed(() => {
     const n = Math.round(this.bend() * 100);
     return n > 0 ? `+${n}` : String(n);
-  });
-  /** Held notes on this synth, as steps above the base C. */
-  protected readonly heldSteps = computed(() => {
-    const base = this.engine.base();
-    return new Set((this.engine.held()[this.gear().id] ?? []).map((n) => n - base));
   });
   protected readonly meterLevels = computed(() => this.engine.levels()[this.gear().id] ?? []);
   protected readonly strips = [1, 2, 3, 4, 5];
@@ -121,74 +98,9 @@ export class GearView {
     return (this.meterLevels()[channel] ?? 0) * this.meterSegs.length > seg + 0.5;
   }
 
-  /** Play the on-screen keys; sliding across them plays each key in turn. */
-  protected keysDown(e: PointerEvent) {
-    e.stopPropagation();
-    if (this.preview() || e.button !== 0) return;
-    const el = e.currentTarget as HTMLElement;
-    el.setPointerCapture(e.pointerId);
-    const id = this.gear().id;
-    this.store.selected.set(id); // the computer keyboard now plays this synth too
-    // Each finger runs its own handlers, so two fingers play two keys independently.
-    const pid = e.pointerId;
-    let note: number | null = null;
-    const play = (ev: PointerEvent) => {
-      if (ev.pointerId !== pid) return;
-      const key = document
-        .elementFromPoint(ev.clientX, ev.clientY)
-        ?.closest<HTMLElement>('[data-step]');
-      const next =
-        key && el.contains(key) ? this.engine.base() + Number(key.dataset['step']) : null;
-      if (next === note) return;
-      if (note !== null) this.engine.noteOff(note, id);
-      note = next;
-      if (note !== null) this.engine.noteOn(note, id);
-    };
-    const up = (ev: PointerEvent) => {
-      if (ev.pointerId !== pid) return;
-      if (note !== null) this.engine.noteOff(note, id);
-      el.removeEventListener('pointermove', play);
-      el.removeEventListener('pointerup', up);
-      el.removeEventListener('pointercancel', up);
-    };
-    play(e);
-    el.addEventListener('pointermove', play);
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
-  }
-
   /** The pitch wheel: 0–1 from the control, -1…+1 to the engine. */
   protected bendWheel(v: number) {
     if (!this.preview()) this.engine.pitchBend(v * 2 - 1, this.gear().id);
-  }
-
-  // ── VIDEO DECK ────────────────────────────────────────
-
-  protected readonly deckId = computed(() => videoId(this.gear().text?.['link'] ?? ''));
-  /** The deck's status lines: title, transport, and "position duration playing". */
-  protected readonly deckLines = computed(() =>
-    (this.engine.statuses()[this.gear().id] ?? 'Paste a YouTube link\nAUDIO OFF\n0 0 0').split(
-      '\n',
-    ),
-  );
-  protected readonly deckTimes = computed(() =>
-    (this.deckLines()[2] ?? '0 0 0').split(' ').map(Number),
-  );
-  protected readonly deckPlaying = computed(() => this.deckTimes()[2] === 1);
-
-  protected loadLink(e: Event, link: string) {
-    e.preventDefault();
-    if (this.preview()) return;
-    this.engine.start();
-    this.store.setText(this.gear().id, 'link', link.trim());
-  }
-
-  protected deckCommand(name: string) {
-    if (!this.preview()) this.engine.command(this.gear().id, name);
-  }
-
-  protected deckSeek(e: Event) {
-    this.deckCommand(`seek:${(e.target as HTMLInputElement).value}`);
   }
 
   protected stomp(e: Event) {

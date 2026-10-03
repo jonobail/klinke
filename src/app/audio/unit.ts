@@ -55,7 +55,7 @@ export abstract class Unit {
   /** Set by the engine: saves a text setting into the patch (e.g. the SH-101's sequence). */
   saveText?: (key: string, value: string) => void;
 
-  /** Text settings changed (the VIDEO DECK's link). */
+  /** Text settings changed (e.g. the SH-101's stored sequence). */
   setText(_text: Record<string, string>): void {}
 
   /** A front-panel action that isn't a stored setting (e.g. "arm sampling"). */

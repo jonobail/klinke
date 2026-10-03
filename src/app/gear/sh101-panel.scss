@@ -1,0 +1,287 @@
+// SH-101 (grey): a charcoal case, white silkscreen, thin black slider slots with printed scales,
+// small rectangular buttons with red LEDs, and the bender to the left of the keys.
+:host {
+  --knob: 18px;
+  --fader: 52px;
+  --cap: #c9cac6;
+  --cap-ring: #6a6b6f;
+  --sh-face: #45474a;
+  --sh-ink: #ecebe6;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  color: var(--sh-ink);
+  background: var(--sh-face);
+  font: 6px/1 var(--font-pixel);
+}
+.lbl {
+  font: 6px/1 var(--font-pixel);
+  white-space: nowrap;
+  color: var(--sh-ink);
+}
+
+// ── Jack strip ──
+.jacks {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 26px 4px 8px;
+  background: #2b2c2e;
+  font: 5px/1 var(--font-pixel);
+  color: #a9aaa6;
+  .right {
+    letter-spacing: 0.04em;
+  }
+}
+
+// ── Synthesis sections ──
+.top {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px 8px 4px;
+}
+.tune {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 44px;
+  .big {
+    --knob: 28px;
+  }
+}
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  h3 {
+    margin: 0;
+    padding: 2px 4px;
+    font: 7px/1 var(--font-pixel);
+    letter-spacing: 0.06em;
+    text-align: center;
+    color: var(--sh-ink);
+    border-bottom: 1px solid var(--sh-ink);
+    border-top: 1px solid var(--sh-ink);
+  }
+}
+.row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 4px;
+  padding: 0 2px;
+}
+// Each slider with a printed scale beside it
+.sl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding-left: 6px;
+  .scale {
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 4px;
+    height: calc(var(--fader) - 4px);
+    background: repeating-linear-gradient(var(--sh-ink) 0 1px, transparent 1px 5px);
+    opacity: 0.6;
+  }
+}
+.rot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  align-self: center;
+}
+// A slide switch: the slot, and the printed position names (click one to select it)
+.sw {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  align-self: center;
+  .slot {
+    width: 5px;
+    background: #111214;
+    box-shadow: inset 0 0 0 1px #000;
+  }
+  .pos {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2px;
+  }
+  button {
+    padding: 1px 2px;
+    border: none;
+    font: 5px/1 var(--font-pixel);
+    text-align: left;
+    white-space: nowrap;
+    color: #a9aaa6;
+    background: none;
+    cursor: pointer;
+    &.on {
+      color: #18181b;
+      background: var(--cap);
+    }
+    &:focus-visible {
+      outline: 1px solid var(--accent);
+    }
+  }
+}
+
+// ── Function buttons ──
+.functions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 10px 6px;
+}
+.power {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: 6px/1 var(--font-pixel);
+  margin-right: 8px;
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  .cap {
+    padding-top: 2px;
+    border-top: 1px solid var(--sh-ink);
+    width: 100%;
+    text-align: center;
+    font: 5px/1 var(--font-pixel);
+  }
+}
+.btns {
+  display: flex;
+  gap: 6px;
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--sh-ink);
+    cursor: pointer;
+    span {
+      // the button itself, a small grey rectangle with the name under it
+      display: block;
+      padding-top: 9px;
+      min-width: 22px;
+      font: 5px/1 var(--font-pixel);
+      text-align: center;
+      background: linear-gradient(#cfd0cc 0 7px, transparent 7px);
+    }
+    &:active span {
+      background: linear-gradient(#a9aaa6 0 7px, transparent 7px);
+    }
+    &:focus-visible {
+      outline: 1px solid var(--accent);
+    }
+  }
+}
+.led {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4a1d22;
+  .on > &,
+  &.on {
+    background: #ff4d5a;
+    box-shadow: 0 0 4px #ff4d5a;
+  }
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  span {
+    font: 15px/1 var(--font-pixel);
+    letter-spacing: 0.04em;
+  }
+}
+.kbd-mark {
+  padding: 2px 3px;
+  font: 6px/1 var(--font-pixel);
+  font-style: normal;
+  color: #18181b;
+  background: var(--green);
+}
+
+// ── Left hand and keys ──
+.bottom {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  padding: 0 8px 8px;
+  min-height: 0;
+  kl-keyboard {
+    flex: 1;
+  }
+}
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 128px;
+}
+.knobs {
+  display: flex;
+  justify-content: space-around;
+}
+.lh-row {
+  display: flex;
+  justify-content: space-between;
+  --fader: 40px;
+}
+.bender-depths {
+  display: flex;
+  gap: 4px;
+}
+.lh-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bender {
+  position: relative;
+  height: 18px;
+  margin: auto 8px 0;
+  background: #111214;
+  box-shadow: inset 0 0 0 1px #000;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+  &:focus-visible {
+    box-shadow:
+      inset 0 0 0 1px #000,
+      0 0 0 2px var(--accent);
+  }
+  .lever {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 8px;
+    margin-left: -4px;
+    background: #2a2a2c;
+    box-shadow:
+      inset 0 0 0 1px #000,
+      inset 2px 0 0 #6a6b6f;
+  }
+}
+.bender-lbl {
+  align-self: center;
+}
