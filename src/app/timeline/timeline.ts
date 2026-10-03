@@ -4,7 +4,8 @@ import type { Note } from '../core/notes';
 import { SONG_BARS, SONG_BEATS } from '../core/transport';
 import { AudioEngine } from '../audio/audio-engine';
 import { PatchStore } from '../patch-store';
-import { Transport, type Track } from '../transport';
+import { Recorder } from '../recorder';
+import { Transport, type Take, type Track } from '../transport';
 
 @Component({
   selector: 'kl-timeline',
@@ -15,6 +16,7 @@ export class Timeline {
   protected readonly transport = inject(Transport);
   private readonly store = inject(PatchStore);
   private readonly engine = inject(AudioEngine);
+  protected readonly recorder = inject(Recorder);
   protected readonly bars = Array.from({ length: SONG_BARS }, (_, i) => i + 1);
   protected readonly flags = [
     { key: 'arm', label: 'R', title: 'Record arm' },
@@ -29,6 +31,16 @@ export class Timeline {
       .gear.filter((g) => GEAR[g.kind].category === 'synth')
       .map((g) => ({ id: g.id, label: GEAR[g.kind].label })),
   );
+
+  /** What an audio track can record: the mix, or any one piece of gear's OUT. */
+  protected readonly sources = computed(() => [
+    { id: 'main', label: 'MAIN MIX' },
+    ...this.store
+      .patch()
+      .gear.filter((g) => g.kind !== 'output')
+      .map((g) => ({ id: g.id, label: `${GEAR[g.kind].label} (${g.id})` })),
+  ]);
+  private readonly waves = new Map<string, string>();
 
   protected pct(beats: number) {
     return (beats / SONG_BEATS) * 100;
@@ -68,6 +80,45 @@ export class Timeline {
     const lo = Math.min(...t.notes.map((x) => x.note));
     const hi = Math.max(...t.notes.map((x) => x.note));
     return hi === lo ? 45 : ((hi - n.note) / (hi - lo)) * 80 + 5;
+  }
+
+  protected setSource(t: Track, e: Event) {
+    const source = (e.target as HTMLSelectElement).value;
+    this.transport.updateTrack(t.id, () => ({ source }));
+  }
+
+  protected sourceLabel(t: Track) {
+    return this.sources().find((s) => s.id === t.source)?.label ?? 'UNPLUGGED GEAR';
+  }
+
+  /** A take's length on the timeline at the current tempo. */
+  protected takeBeats(take: Take) {
+    return Math.min(SONG_BEATS - take.start, (take.duration * this.transport.bpm()) / 60);
+  }
+
+  /** The take's waveform as one SVG path: a vertical line per peak, in a 100-tall box. */
+  protected wave(take: Take) {
+    let d = this.waves.get(take.id);
+    if (d === undefined) {
+      d = take.peaks
+        .map((p, i) => `M${i} ${(50 - p * 48).toFixed(1)}V${(50 + p * 48).toFixed(1)}`)
+        .join('');
+      this.waves.set(take.id, d);
+    }
+    return d;
+  }
+
+  protected liveStart(t: Track): number | undefined {
+    return this.recorder.live()[t.id];
+  }
+
+  protected clear(t: Track) {
+    if (
+      confirm(
+        `Delete ${t.takes.length === 1 ? 'the take' : `all ${t.takes.length} takes`} on ${t.name}?`,
+      )
+    )
+      this.recorder.clearTakes(t);
   }
 
   protected instrumentLabel(t: Track) {

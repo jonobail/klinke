@@ -202,6 +202,9 @@ h1 {
 .export {
   color: #fff;
   background: var(--accent);
+  &.busy {
+    background: linear-gradient(90deg, var(--accent) calc(var(--done) * 100%), #5a2630 0);
+  }
   &:disabled {
     opacity: 0.55;
     cursor: not-allowed;

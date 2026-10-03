@@ -3,12 +3,23 @@ import { DEFAULT_GRID, type Grid, GRIDS, type Note, parseNotes } from './core/no
 import { SONG_BEATS, beatsAfter, clampBpm, formatPosition } from './core/transport';
 import { PatchStore } from './patch-store';
 
+/** A recorded stretch of audio on an audio track; the sound itself is kept in IndexedDB. */
+export interface Take {
+  id: string;
+  /** Where it starts in the song, in beats. */
+  start: number;
+  /** Length in seconds (it doesn't stretch with the tempo). */
+  duration: number;
+  /** Waveform peaks, 50 a second, for drawing. */
+  peaks: number[];
+}
+
 export interface Track {
   id: string;
   name: string;
-  /** AUDIO records sound (still to come); MIDI records notes and plays an instrument. */
+  /** AUDIO records sound; MIDI records notes and plays an instrument. */
   type: 'audio' | 'midi';
-  /** What feeds an audio track, shown on its takes. */
+  /** What an audio track records: 'main' for the mix, or a gear id. */
   source: string;
   /** The gear a MIDI track plays (a synth or the SP-1200), by gear id. */
   instrument: string | null;
@@ -18,8 +29,8 @@ export interface Track {
   arm: boolean;
   mute: boolean;
   solo: boolean;
-  /** Recorded regions on audio tracks, in beats (audio capture is still to come). */
-  takes: { start: number; end: number }[];
+  /** Recorded audio on audio tracks. */
+  takes: Take[];
 }
 
 const SONG_KEY = 'klinke.song.v1';
@@ -28,7 +39,7 @@ const track = (id: string, name: string, over: Partial<Track> = {}): Track => ({
   id,
   name,
   type: 'audio',
-  source: 'MIX BUS',
+  source: 'main',
   instrument: null,
   notes: [],
   grid: DEFAULT_GRID,
@@ -55,6 +66,11 @@ export class Transport {
     track('t1', 'TRACK 1', { type: 'midi' }),
     track('t2', 'TRACK 2', { arm: true }),
   ]);
+  /**
+   * Bumps whenever the song position jumps or the clock re-anchors (play, seek, tempo, the loop
+   * wrapping round): audio takes re-line-up and recordings start a fresh take.
+   */
+  readonly epoch = signal(0);
   /** The MIDI track open in the piano roll. */
   readonly openTrack = signal<string | null>(null);
 
@@ -87,6 +103,7 @@ export class Transport {
     this.startBeat = this.beats();
     this.startTime = performance.now();
     this.playing.set(true);
+    this.epoch.update((n) => n + 1);
     this.frame = requestAnimationFrame(this.tick);
   }
 
@@ -114,6 +131,7 @@ export class Transport {
     this.beats.set(b);
     this.startBeat = b;
     this.startTime = performance.now();
+    if (this.playing()) this.epoch.update((n) => n + 1);
   }
 
   /** REC drops in on the armed tracks, starting playback if needed. */
@@ -124,7 +142,6 @@ export class Transport {
     }
     if (!this.tracks().some((t) => t.arm)) return;
     this.recording.set(true);
-    this.beginTakes();
     this.play();
   }
 
@@ -133,6 +150,7 @@ export class Transport {
     this.startBeat = this.beats();
     this.startTime = performance.now();
     this.bpm.set(clampBpm(bpm));
+    if (this.playing()) this.epoch.update((n) => n + 1);
   }
 
   // ── Tracks ────────────────────────────────────────────
@@ -161,8 +179,9 @@ export class Transport {
 
   // ── Persistence ───────────────────────────────────────
 
-  private save() {
-    const song = { bpm: this.bpm(), tracks: this.tracks().map((t) => ({ ...t, takes: [] })) };
+  /** Saves the song (recorded takes save themselves straight away: audio is costly to lose). */
+  save() {
+    const song = { bpm: this.bpm(), tracks: this.tracks() };
     try {
       localStorage.setItem(SONG_KEY, JSON.stringify(song));
     } catch {
@@ -180,13 +199,14 @@ export class Transport {
         .map((t: Partial<Track>) =>
           track(t.id!, t.name!, {
             type: t.type === 'midi' ? 'midi' : 'audio',
-            source: typeof t.source === 'string' ? t.source : 'MIX BUS',
+            source: typeof t.source === 'string' && t.source !== 'MIX BUS' ? t.source : 'main',
             instrument: typeof t.instrument === 'string' ? t.instrument : null,
             notes: parseNotes(t.notes),
             grid: GRIDS.includes(t.grid as Grid) ? (t.grid as Grid) : DEFAULT_GRID,
             arm: !!t.arm,
             mute: !!t.mute,
             solo: !!t.solo,
+            takes: parseTakes(t.takes),
           }),
         );
       if (tracks.length) this.tracks.set(tracks);
@@ -197,35 +217,30 @@ export class Transport {
 
   // ── Clock ─────────────────────────────────────────────
 
-  private beginTakes() {
-    const at = this.beats();
-    this.tracks.update((ts) =>
-      ts.map((t) =>
-        t.arm && t.type === 'audio' ? { ...t, takes: [...t.takes, { start: at, end: at }] } : t,
-      ),
-    );
-  }
-
   private tick = (now: number) => {
     const prev = this.beats();
     const next = beatsAfter(this.startBeat, (now - this.startTime) / 1000, this.bpm());
     this.beats.set(next);
-    if (this.recording()) {
-      // Wrapping round the loop starts a fresh take at the top.
-      if (next < prev) this.beginTakes();
-      else this.extendTakes(next);
-    }
+    if (next < prev) this.epoch.update((n) => n + 1); // round the loop
     this.frame = requestAnimationFrame(this.tick);
   };
+}
 
-  private extendTakes(end: number) {
-    this.tracks.update((ts) =>
-      ts.map((t) => {
-        if (!t.arm || t.type !== 'audio' || !t.takes.length) return t;
-        const takes = t.takes.slice();
-        takes[takes.length - 1] = { ...takes[takes.length - 1], end };
-        return { ...t, takes };
-      }),
-    );
-  }
+function parseTakes(raw: unknown): Take[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (t) =>
+        t &&
+        typeof t.id === 'string' &&
+        Number.isFinite(t.start) &&
+        Number.isFinite(t.duration) &&
+        t.duration > 0,
+    )
+    .map((t) => ({
+      id: t.id,
+      start: Math.max(0, t.start),
+      duration: t.duration,
+      peaks: Array.isArray(t.peaks) ? t.peaks.filter(Number.isFinite) : [],
+    }));
 }

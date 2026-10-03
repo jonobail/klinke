@@ -7,7 +7,7 @@ mockup (synth → overdrive → reverb → delay → 4ch mixer → MAIN • REC,
 Tick boxes as items land. Milestones are in build order: each one builds on the one before.
 Pure logic goes in `src/app/core/` with `node --test` coverage in `tests/`.
 
-**Status:** M0, M2, the MS-20, the Model D, the MF-104, the 12 rack effects and the SP-1200 done, M1 mostly done. Next up: **M3 Record & arrange**.
+**Status:** M0, M2, the MS-20, the Model D, the MF-104, the 12 rack effects and the SP-1200 done, M1 mostly done. M3 audio recording done. Next up: **GitHub Pages** hosting.
 
 ---
 
@@ -240,13 +240,22 @@ armed and REC is on, snapping to a per-track grid (OFF, 1/4, 1/8, 1/16, 1/32). A
 - [ ] Piano roll: box-select, copy / paste, velocity lane, zoom; replace (not only overdub) recording
 - [ ] Songs in FILE export / import (today only the patch is exported)
 
-- [ ] Choose each track's source (MAIN = mix bus, other tracks = any OUT jack)
-- [ ] Capture audio on armed tracks while REC is on (AudioWorklet → PCM buffers)
-- [ ] Real waveforms in take regions; play takes back in sync with the transport
-- [ ] Mute / solo affect playback; MAIN bus records the whole mix
+Audio tracks (done): each records MAIN MIX or any one gear's OUT. `recorder.ts` taps it with an
+AudioWorklet (`public/worklets/capture.js`, which also records silence so takes stay continuous),
+lines the take up with the song by the audio frame it started on, keeps the PCM in IndexedDB
+(`audio/takes-store.ts`) and the take's position and waveform peaks in the song. Takes play back
+through MAIN • REC via AudioBufferSources scheduled on the audio clock. EXPORT MIX bounces in
+real time (the gear is live Web Audio, so an offline render isn't possible) and encodes the WAV
+in `core/wav.ts` (tested).
+
+- [x] Choose each track's source (MAIN = the mix, or any gear's OUT)
+- [x] Capture audio on armed tracks while REC is on (AudioWorklet → PCM, kept in IndexedDB)
+- [x] Real waveforms in take regions; play takes back in sync with the transport
+- [x] Mute / solo affect playback; delete a track's takes
+- [x] **EXPORT MIX**: real-time bounce of the song → `klinke-mix.wav`
 - [ ] Metronome and count-in
-- [ ] Select, move, trim and delete takes; loop region on the ruler
-- [ ] **EXPORT MIX**: offline render (OfflineAudioContext) → WAV download
+- [ ] Select, move and trim single takes; loop region on the ruler
+- [ ] Compensate output / input latency when recording against what you hear
 
 ## M4 Sequencing
 

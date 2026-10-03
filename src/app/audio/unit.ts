@@ -61,6 +61,11 @@ export abstract class Unit {
   /** A front-panel action that isn't a stored setting (e.g. "arm sampling"). */
   command(_name: string): void {}
 
+  /** What recording this gear captures: its OUT jack (MAIN • REC overrides it with the mix). */
+  get tap(): AudioNode | undefined {
+    return this.output;
+  }
+
   /** The node behind an OUT jack. */
   outputFor(jack: string): AudioNode | undefined {
     return jack === 'out' ? this.output : this.outs[jack];

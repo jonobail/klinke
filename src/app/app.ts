@@ -5,6 +5,7 @@ import { PatchFloor } from './floor/patch-floor';
 import { Inventory } from './inventory/inventory';
 import { PatchStore } from './patch-store';
 import { PianoRoll } from './piano-roll/piano-roll';
+import { Recorder } from './recorder';
 import { Sequencer } from './sequencer';
 import { Timeline } from './timeline/timeline';
 import { TopBar } from './top-bar/top-bar';
@@ -70,6 +71,7 @@ export class App {
   protected readonly transport = inject(Transport);
   /** Plays and records the MIDI tracks (constructed here so it runs from the start). */
   private readonly sequencer = inject(Sequencer);
+  private readonly recorder = inject(Recorder);
   protected readonly engine = inject(AudioEngine);
 
   constructor() {
@@ -86,7 +88,12 @@ export class App {
     // Handy for poking at the app from the dev-tools console.
     if (isDevMode())
       Object.assign(window, {
-        klinke: { store: this.store, transport: this.transport, engine: this.engine },
+        klinke: {
+          store: this.store,
+          transport: this.transport,
+          engine: this.engine,
+          recorder: this.recorder,
+        },
       });
   }
 

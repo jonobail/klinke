@@ -3,8 +3,8 @@
 A browser music studio in pixel art, built with Angular: drag gear (an MS-20, a Model D, an SH-101, an MF-104 delay, pedals, a
 4-channel mixer) onto the floor, patch it together with cables, and record onto a 16-bar timeline.
 
-Progress and plans are tracked in **[docs/ROADMAP.md](docs/ROADMAP.md)**. The patch floor and
-the sound engine work now; recording audio onto the timeline is the next milestone.
+Progress and plans are tracked in **[docs/ROADMAP.md](docs/ROADMAP.md)**. The patch floor, the
+sound engine, MIDI tracks and audio recording work now.
 
 ## Running locally
 
@@ -43,6 +43,13 @@ npm run build
   a note, drag to move, drag the right edge to resize, double-click or Delete to remove; GRID sets
   the snap (default 1/16). To record, arm the track (R) and press REC, then play the computer
   keys, a MIDI keyboard or the on-screen keys; notes snap to the grid. Tracks save with SAVE.
+- **Audio tracks:** pick what a track records in its lane: MAIN MIX (everything you hear), or one
+  piece of gear's OUT. Arm it (R) and press REC; the take appears with its waveform and plays back
+  in time with the song (M / S work as usual). Takes are kept in this browser (IndexedDB) and
+  survive a reload; ✕ deletes a track's takes. Looping round or moving the playhead mid-take
+  starts a new take.
+- **EXPORT MIX:** plays the song once from the top in real time (through the last note or take,
+  plus a bar for tails) and downloads it as `klinke-mix.wav`. Click again to cancel.
 - **SH-101:** monophonic with a sub-oscillator; the LFO also clocks the arpeggiator (ARP: UP / U&D
   / DOWN, hold keys) and the sequencer: set SEQ to LOAD, play notes (REST for a gap), then PLAY;
   holding a key while it plays transposes the line. HOLD latches. The sequence is saved with the
@@ -70,7 +77,8 @@ npm run build
 |---|---|
 | `src/app/core/` | Pure logic with no Angular: gear catalog, patch graph, transport and sound maths |
 | `src/app/patch-store.ts` | Patch state (signals), selection, cable patching, persistence |
-| `src/app/transport.ts` | Song clock, tracks and record regions |
+| `src/app/transport.ts` | Song clock and tracks |
+| `src/app/sequencer.ts`, `recorder.ts` | MIDI track playback / recording; audio takes, EXPORT MIX |
 | `src/app/audio/` | Web Audio engine: one unit per gear kind, graph sync, keyboard / MIDI notes, meters |
 | `src/app/top-bar/`, `inventory/`, `floor/`, `timeline/` | The four screen areas |
 | `src/app/gear/` | Gear artwork and the knob / fader controls |

@@ -86,20 +86,55 @@
       }
     </div>
   } @else {
-    <div class="lane" [class.muted]="t.mute">
-      @for (take of t.takes; track $index; let last = $last) {
-        <div
-          class="take"
-          [class.live]="last && t.arm && transport.recording()"
-          [style.left.%]="pct(take.start)"
-          [style.width.%]="pct(take.end - take.start)"
-        >
-          <span>{{ last && t.arm && transport.recording() ? 'REC…' : t.source }}</span>
+    <div class="lane audio" [class.muted]="t.mute">
+      @for (take of t.takes; track take.id) {
+        <div class="take" [style.left.%]="pct(take.start)" [style.width.%]="pct(takeBeats(take))">
+          <svg
+            [attr.viewBox]="'0 0 ' + take.peaks.length + ' 100'"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path [attr.d]="wave(take)" />
+          </svg>
         </div>
-      } @empty {
-        @if (i === 0) {
-          <span class="empty">mix bus · the takes you record land on the tracks below</span>
+      }
+      @let start = liveStart(t);
+      @if (start !== undefined) {
+        <div
+          class="take live"
+          [style.left.%]="pct(start)"
+          [style.width.%]="pct(transport.beats() - start)"
+        >
+          <span>REC…</span>
+        </div>
+      }
+      <select
+        class="source"
+        [attr.aria-label]="t.name + ' records from'"
+        title="What this track records"
+        (change)="setSource(t, $event)"
+      >
+        @for (s of sources(); track s.id) {
+          <option [value]="s.id" [selected]="s.id === t.source">{{ s.label }}</option>
         }
+        @if (sourceLabel(t) === 'UNPLUGGED GEAR') {
+          <option [value]="t.source" selected>— gone —</option>
+        }
+      </select>
+      @if (t.takes.length) {
+        <button
+          type="button"
+          class="clear"
+          title="Delete this track's takes"
+          [attr.aria-label]="'Delete takes on ' + t.name"
+          (click)="clear(t)"
+        >
+          ✕
+        </button>
+      } @else if (start === undefined) {
+        <span class="empty">{{
+          t.arm ? 'press REC to record ' + sourceLabel(t) : 'arm R and press REC to record audio'
+        }}</span>
       }
     </div>
   }

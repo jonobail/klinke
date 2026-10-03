@@ -278,6 +278,95 @@ export class AudioEngine {
       const to = this.units.get(c.to.gear)?.inputs[c.to.jack];
       if (from && to) from.connect(to);
     }
+    // Re-patching unplugged everything leaving each OUT jack, recording taps included.
+    for (const [node, source] of this.captures) this.sourceNode(source)?.connect(node);
+    this.connectTrackBus();
+  }
+
+  // ── Recording taps and take playback ──────────────────
+
+  /** Live recording taps: worklet node → what it records (a gear id, or 'main' for the mix). */
+  private readonly captures = new Map<AudioWorkletNode, string>();
+  private worklet?: Promise<void>;
+  /** Takes play into MAIN • REC through this bus (so MAIN's volume, limiter and meter apply). */
+  private bus?: GainNode;
+
+  /** The audio context, once sound has started (for scheduling takes). */
+  get context(): AudioContext | undefined {
+    return this.ctx;
+  }
+
+  private sourceNode(source: string): AudioNode | undefined {
+    const id =
+      source === 'main' ? this.store.patch().gear.find((g) => g.kind === 'output')?.id : source;
+    return id ? this.units.get(id)?.tap : undefined;
+  }
+
+  /** The bus that recorded takes play into. */
+  trackBus(): GainNode | undefined {
+    if (!this.ctx) return undefined;
+    if (!this.bus) {
+      this.bus = this.ctx.createGain();
+      this.connectTrackBus();
+    }
+    return this.bus;
+  }
+
+  private connectTrackBus() {
+    if (!this.bus) return;
+    const out = this.store.patch().gear.find((g) => g.kind === 'output');
+    const input = out && this.units.get(out.id)?.inputs['in'];
+    if (input) {
+      this.bus.disconnect();
+      this.bus.connect(input);
+    }
+  }
+
+  /**
+   * Records `source` ('main' for the mix, or a gear id): blocks of audio arrive as the audio
+   * thread captures them; `stop()` resolves with every block and the audio frame the first one
+   * started on (to line the take up with the song).
+   */
+  async capture(
+    source: string,
+  ): Promise<{ stop: () => Promise<{ frame: number; chunks: Float32Array[][] }> }> {
+    this.start();
+    const ctx = this.ctx!;
+    this.worklet ??= ctx.audioWorklet.addModule(
+      new URL('worklets/capture.js', document.baseURI).href,
+    );
+    await this.worklet;
+    const node = new AudioWorkletNode(ctx, 'klinke-capture', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      channelCount: 2,
+      channelCountMode: 'explicit',
+    });
+    // Nodes only run while connected towards the speakers: through a silent gain.
+    const sink = ctx.createGain();
+    sink.gain.value = 0;
+    node.connect(sink).connect(ctx.destination);
+    this.captures.set(node, source);
+    this.sourceNode(source)?.connect(node);
+    const chunks: Float32Array[][] = [];
+    let frame = -1;
+    let finish: () => void = () => {};
+    const done = new Promise<void>((r) => (finish = r));
+    node.port.onmessage = (e) => {
+      if (e.data.done) return finish();
+      if (frame < 0) frame = e.data.frame;
+      chunks.push(e.data.channels);
+    };
+    return {
+      stop: async () => {
+        node.port.postMessage('stop');
+        await Promise.race([done, new Promise((r) => setTimeout(r, 500))]);
+        this.captures.delete(node);
+        node.disconnect();
+        sink.disconnect();
+        return { frame: Math.max(0, frame), chunks };
+      },
+    };
   }
 
   // ── Meters ────────────────────────────────────────────

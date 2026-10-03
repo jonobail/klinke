@@ -149,9 +149,19 @@
   <button
     type="button"
     class="export"
-    disabled
-    title="Mixdown to WAV arrives with recording (roadmap M3)"
+    [class.busy]="recorder.exporting() !== null"
+    [style.--done]="recorder.exporting() ?? 0"
+    [title]="
+      recorder.exporting() !== null
+        ? 'Bouncing the song in real time: click to cancel'
+        : 'Play the song once from the top and save the mix as a WAV'
+    "
+    (click)="recorder.exportMix()"
   >
-    EXPORT MIX
+    @if (recorder.exporting() !== null) {
+      BOUNCING {{ (recorder.exporting()! * 100).toFixed(0) }}%
+    } @else {
+      EXPORT MIX
+    }
   </button>
 </div>

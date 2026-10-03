@@ -216,6 +216,8 @@ class MultUnit extends Unit {
 class OutputUnit extends Unit {
   private readonly volume = this.ctx.createGain();
   private readonly limiter = this.ctx.createDynamicsCompressor();
+  /** The finished mix, for recording the MAIN track and EXPORT MIX. */
+  private readonly mix = this.ctx.createGain();
 
   constructor(ctx: AudioContext) {
     super(ctx);
@@ -227,7 +229,12 @@ class OutputUnit extends Unit {
     this.limiter.release.value = 0.1;
     this.inputs['in'] = this.volume;
     this.volume.connect(this.limiter).connect(ctx.destination);
+    this.limiter.connect(this.mix);
     this.analyser(this.limiter);
+  }
+
+  override get tap() {
+    return this.mix;
   }
 
   set(p: Params) {

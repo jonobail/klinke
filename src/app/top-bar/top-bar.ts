@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { AudioEngine } from '../audio/audio-engine';
 import { PatchStore } from '../patch-store';
+import { Recorder } from '../recorder';
 import { Transport } from '../transport';
 
 interface MenuItem {
@@ -19,6 +20,7 @@ export class TopBar {
   protected readonly store = inject(PatchStore);
   protected readonly transport = inject(Transport);
   protected readonly engine = inject(AudioEngine);
+  protected readonly recorder = inject(Recorder);
   protected readonly midiTitle = computed(() => {
     const inputs = this.engine.midiInputs();
     switch (this.engine.midi()) {
@@ -44,6 +46,7 @@ export class TopBar {
         { label: 'Load demo rig', run: () => this.store.reset(true) },
         { label: 'Save', run: () => this.store.save() },
         { label: 'Export patch (.json)…', run: () => this.exportPatch() },
+        { label: 'Export mix (.wav)', run: () => void this.recorder.exportMix() },
         { label: 'Import patch (.json)…', run: () => this.importPatch() },
       ],
     },
