@@ -1,0 +1,150 @@
+<ng-template #k let-id let-label="label">
+  <span class="ctl">
+    <kl-knob
+      [value]="value(id)"
+      [label]="param(id).label"
+      [steps]="param(id).steps ?? 0"
+      [valueText]="valueText(id)"
+      (changed)="set(id, $event)"
+    />
+    <span class="lbl">{{ label ?? param(id).label }}</span>
+  </span>
+</ng-template>
+
+<header class="top">
+  <span class="id">
+    <span class="model">CHORD-8</span>
+    <span class="sub">CHORD GENERATOR</span>
+  </span>
+  <div class="lcd" title="The chord playing (or the last one played)">
+    <span class="chord">{{ status().chord || '—' }}</span>
+    <span class="line">
+      {{ keyLine() }}
+      @if (status().rec >= 0) {
+        <b>REC {{ status().rec + 1 }}</b>
+      }
+    </span>
+  </div>
+  <section class="gen">
+    <ng-container *ngTemplateOutlet="k; context: { $implicit: 'style' }" />
+    <span class="ctl">
+      <button
+        type="button"
+        class="btn dice"
+        title="DICE: roll a new progression (and PATTERN GEN rhythm) in this style"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="command('dice')"
+      >
+        ⚄
+      </button>
+      <span class="lbl">DICE</span>
+    </span>
+    <span class="ctl">
+      <button
+        type="button"
+        class="btn rec"
+        [class.on]="status().rec >= 0"
+        title="REC: the next chords you play are written onto pads 1–8 (press again to stop)"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="command('rec')"
+      >
+        <i class="led" [class.on]="status().rec >= 0"></i>
+      </button>
+      <span class="lbl">REC</span>
+    </span>
+  </section>
+  @if (hasKeyboard() && !preview()) {
+    <em class="kbd-mark" title="The computer keyboard and MIDI play this: white keys = pads 1–8"
+      >⌨ KEYS</em
+    >
+  }
+</header>
+
+<div class="mid">
+  <div class="pads">
+    @for (pad of pads(); track $index; let i = $index) {
+      <button
+        type="button"
+        class="pad"
+        [class.lit]="pad.lit"
+        [class.next]="pad.next"
+        [title]="'PAD ' + (i + 1) + ': ' + pad.name + ' (hold to play, wheel to change)'"
+        (pointerdown)="padDown($event, i)"
+        (wheel)="padWheel($event, i)"
+      >
+        <span class="num">{{ i + 1 }}</span>
+        <span class="rn">{{ pad.roman }}</span>
+        <span class="nm">{{ pad.name }}</span>
+      </button>
+    }
+  </div>
+
+  <section class="harmony">
+    <h3>HARMONY</h3>
+    <div class="grid">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'mode' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'key' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'scale' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'size', label: 'SIZE' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'voicing' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'inversion', label: 'INV' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'octave' }" />
+      <span class="ctl">
+        <button
+          type="button"
+          class="toggle"
+          [class.on]="on('lead')"
+          role="switch"
+          [attr.aria-checked]="on('lead')"
+          aria-label="VOICE LEADING"
+          title="VOICE LEADING: each chord takes the inversion nearest the one before"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="toggle('lead')"
+        >
+          <i></i>
+        </button>
+        <span class="lbl">LEAD</span>
+      </span>
+    </div>
+  </section>
+</div>
+
+<div class="player">
+  <section>
+    <h3>PLAY</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'velocity', label: 'VEL' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'strum' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'strumDir', label: 'DIR' }" />
+    </div>
+  </section>
+  <section>
+    <h3>ARP</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'arp', label: 'MODE' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'arpRate', label: 'RATE' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'arpOct', label: 'OCT' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'gate' }" />
+    </div>
+  </section>
+  <section>
+    <h3>RHYTHM</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'pattern' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'bounce' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'bounceTime', label: 'TIME' }" />
+    </div>
+  </section>
+  <section>
+    <h3>BEND</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'bend', label: 'FROM' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'bendTime', label: 'TIME' }" />
+    </div>
+  </section>
+</div>
+
+<footer class="jacks">
+  <span>NOTE IN</span>
+  <span>NOTE OUT</span>
+</footer>

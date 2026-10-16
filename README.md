@@ -17,14 +17,22 @@ sound is generated live in the browser; there is no server.
 
 - **Patch anything into anything.** Each piece of gear has real IN and OUT jacks; signal flows
   only where cables go, and feedback loops are refused.
-- **Synths modelled on their service manuals:** MS-20, Model D and SH-101, each with its original
-  voice architecture, panel layout and quirks (note priority, glide, arpeggiator, sequencer).
+- **Synths modelled on their service manuals and schematics:** MS-20, Model D and SH-101, each
+  with its original voice architecture, panel layout and quirks (note priority, glide,
+  arpeggiator, sequencer), and the fully polyphonic PS-3100 with a filter and envelope on every
+  key, three resonators and an ensemble.
+- **A singing voice chain over NOTE cables:** CHORD-8 builds chords and progressions (strum,
+  arp, patterns), MOTION-15 gives every note its own gliding, swelling, drifting voice, and
+  CHOIR-16 sings them with up to 16 physically modelled singers (vocal folds into a simulated
+  vocal tract) on a vowel chart.
 - **SP-1200 sampling drum machine** that samples whatever you patch into it, driven from its
   front-panel keys and LCD like the original.
 - **Effects:** overdrive, delay, reverb and filter pedals, the MF-104 analog delay, and twelve
   rack processors (H949, Delta-T, Model 200, PCM-70, PCM-80, DPS-D7 / M7 / R7 / V55 / V77,
   E1010, REV5).
 - **MIDI tracks** with live quantised recording and a piano roll.
+- **Loops** for the whole song and for each track (1–16 bars), so a one-bar beat can repeat under
+  a longer part.
 - **Audio tracks** that record the main mix or any single piece of gear, with waveforms and
   playback scheduled on the audio clock.
 - **EXPORT MIX** bounces the song to a WAV file.
@@ -58,6 +66,9 @@ sound is generated live in the browser; there is no server.
 
 Only what reaches **MAIN • REC** is heard. A **MULT** splits one signal to several inputs.
 
+Blue DIN-style jacks carry notes, not sound: patch **CHORD-8 → MOTION-15 → CHOIR-16** with NOTE
+cables, CHOIR-16's OUT into the mixer, and play CHORD-8 from the keys (white keys play its 8 pads).
+
 ### Playing
 
 The computer keyboard plays one instrument at a time. A MIDI controller works in Chrome and Edge
@@ -76,8 +87,14 @@ across any on-screen keyboard.
   it and press **REC**; the take appears with its waveform and plays back in time with the song.
   Mute (**M**) and solo (**S**) apply. **✕** deletes a track's takes. Wrapping round the loop or
   moving the playhead while recording starts a new take.
+- **Loops:** the **LOOP** slider above the tracks sets the song loop (1, 2, 4, 8 or 16 bars);
+  bars past it are shaded and never play. Each track also has its own **LOOP** slider: set it to
+  1–8 bars and the track repeats its first bars across the song (dimmed copies show the repeats).
+  A looping MIDI track records each pass into its loop; a looping audio track starts a new take
+  each time round.
 - **EXPORT MIX** (or **FILE → Export mix**) plays the song once from the top in real time,
-  through the last note or take plus a bar for tails, and downloads `klinke-mix.wav`. Click
+  through the last note or take plus a bar for tails (exactly one pass when the song loop is
+  shorter than 16 bars), and downloads `klinke-mix.wav`. Click
   again to cancel.
 - **SAVE** (or **Ctrl+S**) keeps the patch and song in this browser. Recorded audio is saved
   as soon as each take ends.
@@ -106,6 +123,17 @@ through OSC MOD / FILTER MOD. The OVERLOAD lamp lights when the mixer drives the
 Monophonic with a sub-oscillator. The LFO also clocks the arpeggiator (UP / U&D / DOWN) and the
 sequencer: set SEQ to LOAD, play notes (REST for a gap), then PLAY. Holding a key while it plays
 transposes the line; HOLD latches. The sequence is saved with the patch.
+</details>
+
+<details>
+<summary><b>PS-3100</b></summary>
+
+Fully polyphonic: every key has its own filter, amplifier and envelope, so chords of any size
+work. TEMPERAMENT ADJUST retunes each note name. RESONANCE INTENSITY blends in three fixed
+resonant peaks (RESONATOR 1–3), and ENSEMBLE adds its chorus. RELEASE DAMPED stops keys short;
+ON lets them ring at the decay time. The general envelope can shape the whole keyboard through
+VCA 2 (orange switch) and the voltage processors. Only FINAL OUT, PHONES and DIRECT OUT are
+patchable jacks; see [docs/devices/ps3100.md](docs/devices/ps3100.md).
 </details>
 
 <details>

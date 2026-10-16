@@ -7,7 +7,7 @@ mockup (synth → overdrive → reverb → delay → 4ch mixer → MAIN • REC,
 Tick boxes as items land. Milestones are in build order: each one builds on the one before.
 Pure logic goes in `src/app/core/` with `node --test` coverage in `tests/`.
 
-**Status:** M0, M2, the MS-20, the Model D, the MF-104, the 12 rack effects and the SP-1200 done, M1 mostly done. M3 audio recording done. Next up: **GitHub Pages** hosting.
+**Status:** M0, M2, the MS-20, the Model D, the SH-101, the PS-3100, the MF-104, the 12 rack effects and the SP-1200 done, M1 mostly done. M3 audio recording and loops done; hosted on GitHub Pages.
 
 ---
 
@@ -207,6 +207,40 @@ From the 1982 service notes; details in `docs/devices/sh101.md`.
 - [x] Arpeggiator and 100-step sequencer (with rests, transpose by key) clocked by the LFO; HOLD
 - [ ] LFO MOD grip, EXT CLK and CV / GATE jacks; sync the clock to the song tempo
 
+
+## M2i PS-3100 ✅
+
+Fully polyphonic synthesizer after the panel photo, the resonator schematic and the board
+connector list (`docs/devices/ps3100.md`): a voice per key (filter, VCA, ADS + RELEASE switch,
+KBD HOLD), TEMPERAMENT ADJUST, the resonator board (≈58 Hz high-pass, three Q = 5 band-passes,
+intensity crossfade), AM, ensemble, VCA 2 under the general envelope, MG1 / MG2 / S&H, voltage
+processors pre-patched, FINAL / PHONES / DIRECT outputs.
+
+- [x] Core maths and tests (`core/ps3100.ts`), unit (`audio/ps3100-unit.ts`), panel like the photo
+- [ ] Patchable CV jacks (needs control-voltage cables on the floor)
+- [ ] Phase-locked divider bank (one master oscillator for all keys) instead of per-voice oscillators
+## M2j Voice chain: CHORD-8 → MOTION-15 → CHOIR-16 ✅
+
+NOTE cables (blue, dashed, DIN-style jacks) carry notes with per-note bend, pressure and timbre
+between note gear (`NoteEvent` in `audio/unit.ts`); note and audio jacks never mix, note loops are
+refused, and unplugging mid-note sends the offs. NOTE FX gear plays from the keys, MIDI and MIDI
+tracks like a synth.
+
+- [x] NOTE cables: patch model and tests, engine routing with per-cable voice tracking, tempo to
+      every unit, floor drawing, NOTE FX shelf tab
+- [x] CHORD-8 (`docs/devices/chords.md`): scale chords from one key, voicings and voice leading,
+      8 pads with a styled progression generator and chord recording, strum, arp, patterns,
+      bounce, bend-in
+- [x] MOTION-15 (`docs/devices/motion.md`): up to 15 voices that glide between chords on the same
+      voices (smart / classic leading), glide curves, paths and stagger, swell, wander, delayed
+      vibrato, drift, autopilot with an 8-step pattern, global bend, voice-line display
+- [x] CHOIR-16 (`docs/devices/choir.md`): up to 16 singers in an AudioWorklet, glottal source into
+      a Kelly-Lochbaum tract with a nasal branch, anatomy, styles, vowel chart and vowel motion,
+      CHOIR / TUTTI / SOLO, room
+- [ ] Listen-through on real hardware; tune CHOIR-16 levels and styles by ear
+- [ ] Consonants for CHOIR-16 (it sings vowels only); tempo-synced vowel motion
+- [ ] NOTE IN jacks on the existing synths (the PS-3100 especially) so CHORD-8 can play them
+
 ## M2f SP-1200 sampler ✅
 
 Sampling drum machine from the owner's manual and the EMU-SP1200 hardware notes; details in
@@ -253,6 +287,8 @@ in `core/wav.ts` (tested).
 - [x] Real waveforms in take regions; play takes back in sync with the transport
 - [x] Mute / solo affect playback; delete a track's takes
 - [x] **EXPORT MIX**: real-time bounce of the song → `klinke-mix.wav`
+- [x] Song loop (1–16 bars) and per-track loops: a track repeats its first N bars across the song;
+      MIDI and audio record into the loop (`trackLoopBeats`, `loopRepeats` in `core/transport.ts`)
 - [ ] Metronome and count-in
 - [ ] Select, move and trim single takes; loop region on the ruler
 - [ ] Compensate output / input latency when recording against what you hear

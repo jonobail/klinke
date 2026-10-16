@@ -1,0 +1,124 @@
+@let s = settings();
+
+<ng-template #section let-sec>
+  <section class="sec {{ sec.cls ?? '' }}">
+    <h3>{{ sec.title }}</h3>
+    @for (row of sec.rows; track $index) {
+      <div class="row">
+        @for (id of row; track id) {
+          <span class="ctl">
+            @if (isRocker(id)) {
+              <kl-rocker
+                [value]="value(id)"
+                [label]="param(id).label"
+                [colour]="rockerColour(id)"
+                (changed)="set(id, $event)"
+              />
+            } @else {
+              <kl-knob
+                [value]="value(id)"
+                [label]="param(id).label"
+                [steps]="param(id).steps ?? 0"
+                [valueText]="valueText(id)"
+                (changed)="set(id, $event)"
+              />
+            }
+            <span class="lbl">{{ short(id) }}</span>
+          </span>
+        }
+      </div>
+    }
+  </section>
+</ng-template>
+
+<header>
+  <span class="logo">MOTION-15</span>
+  <span class="sub">EXPRESSION ENGINE</span>
+  <span class="lcd" aria-live="polite">{{ headline() }}</span>
+  <span class="count" title="Voices sounding">{{ voiceCount() }}/{{ s.voices }}</span>
+  <button
+    type="button"
+    title="Previous preset"
+    (pointerdown)="$event.stopPropagation()"
+    (click)="preset(-1)"
+  >
+    ◀
+  </button>
+  <button
+    type="button"
+    title="Next preset"
+    (pointerdown)="$event.stopPropagation()"
+    (click)="preset(1)"
+  >
+    ▶
+  </button>
+  <button
+    type="button"
+    class="dice"
+    title="DICE: random settings and pattern"
+    (pointerdown)="$event.stopPropagation()"
+    (click)="roll()"
+  >
+    DICE
+  </button>
+  @if (hasKeyboard()) {
+    <i class="kbd-mark">⌨ KEYS</i>
+  }
+</header>
+
+<div class="upper">
+  <div class="screen">
+    <canvas
+      #lines
+      width="192"
+      height="112"
+      aria-label="Voice lines: each voice's pitch over the last four seconds"
+    ></canvas>
+  </div>
+  <section class="sec auto">
+    <h3>{{ AUTO.title }}</h3>
+    <div class="auto-body">
+      <div class="auto-ctl">
+        <ng-container
+          *ngTemplateOutlet="
+            section;
+            context: { $implicit: { title: '', rows: AUTO.rows, cls: 'bare' } }
+          "
+        />
+      </div>
+      <div
+        class="pattern"
+        [class.off]="s.auto === 'OFF'"
+        role="group"
+        aria-label="Autopilot pattern: click or drag a step, wheel to nudge"
+        (pointerdown)="stepDown($event)"
+      >
+        @for (i of STEPS; track i) {
+          <span
+            class="step"
+            [class.now]="step() === i"
+            [title]="'Step ' + (i + 1) + ': ' + pattern()[i]"
+            (wheel)="stepWheel($event, i)"
+          >
+            <i [style]="barStyle(pattern()[i])"></i>
+            <b>{{ pattern()[i] }}</b>
+          </span>
+        }
+      </div>
+    </div>
+  </section>
+  <ng-container *ngTemplateOutlet="section; context: { $implicit: BEND }" />
+</div>
+
+<div class="lower">
+  @for (sec of LOWER; track sec.title) {
+    <ng-container *ngTemplateOutlet="section; context: { $implicit: sec }" />
+  }
+</div>
+
+<!-- Names for the NOTE jacks, beside where the floor draws them -->
+@for (j of jacks(); track j.id) {
+  <span class="jack-lbl" [class.out]="j.dir === 'out'" [style.top.%]="j.fy * 100">{{
+    j.label
+  }}</span>
+}

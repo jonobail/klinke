@@ -26,10 +26,30 @@ export const DESCRIPTIONS: Record<GearKind, GearInfo> = {
     purpose:
       'One oscillator with a sub-oscillator and noise into a squelchy 4-pole filter, plus an arpeggiator and 100-step sequencer clocked by its LFO; a bass and acid classic.',
   },
+  ps3100: {
+    what: 'Fully polyphonic analog synthesizer (1977)',
+    purpose:
+      'Every one of its 48 keys has its own filter, amplifier and envelope, so it plays any chord; three resonators, an ensemble and a sample & hold make it a lush pad and organ machine.',
+  },
   sp1200: {
     what: 'Sampling drum machine (1987)',
     purpose:
       'Record short sounds from SAMPLE IN at a gritty 12-bit / 26 kHz, then play them from eight pads with per-pad pitch, decay and level.',
+  },
+  chords: {
+    what: 'Chord and progression generator (note effect)',
+    purpose:
+      'Turns one key into a full chord in any scale, invents progressions, strums and arpeggiates; patch its NOTE OUT into MOTION-15 or CHOIR-16.',
+  },
+  motion: {
+    what: 'Per-voice expression engine (note effect)',
+    purpose:
+      'Gives every note its own pitch, pressure and timbre: chords glide into each other instead of restarting, and held notes swell and drift.',
+  },
+  choir: {
+    what: 'Physically modelled choir (up to 16 singers)',
+    purpose:
+      'Sings with simulated vocal folds and tracts, each singer shaped by their body; slide between vowels, sing as a choir, in octaves or solo.',
   },
   mixer: {
     what: '4-channel mixer',

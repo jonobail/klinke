@@ -2,10 +2,14 @@
 
 import { type DeviceKind, type GearKind } from '../core/gear';
 import { driveCurve, expMap, faderGain, mixSends, panFor, reverbImpulse } from '../core/sound';
+import { ChoirUnit } from './choir-unit';
+import { ChordsUnit } from './chords-unit';
 import { DEVICE_UNITS } from './devices';
 import { Mf104Unit } from './mf104-unit';
 import { ModelDUnit } from './modeld-unit';
+import { MotionUnit } from './motion-unit';
 import { Ms20Unit } from './ms20-unit';
+import { Ps3100Unit } from './ps3100-unit';
 import { Sh101Unit } from './sh101-unit';
 import { Sp1200Unit } from './sp1200-unit';
 import { type Params, Unit, glide } from './unit';
@@ -255,10 +259,18 @@ export function createUnit(kind: GearKind, ctx: AudioContext): Unit {
       return new ModelDUnit(ctx);
     case 'sh101':
       return new Sh101Unit(ctx);
+    case 'ps3100':
+      return new Ps3100Unit(ctx);
     case 'mf104':
       return new Mf104Unit(ctx);
     case 'sp1200':
       return new Sp1200Unit(ctx);
+    case 'chords':
+      return new ChordsUnit(ctx);
+    case 'motion':
+      return new MotionUnit(ctx);
+    case 'choir':
+      return new ChoirUnit(ctx);
     case 'mult':
       return new MultUnit(ctx);
     case 'overdrive':

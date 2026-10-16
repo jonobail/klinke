@@ -66,7 +66,12 @@ export class PianoRoll {
     return g ? GEAR[g.kind].label : 'no instrument';
   });
   protected readonly selected = signal<string | null>(null);
-  protected readonly playhead = computed(() => this.transport.beats() * BEAT);
+  /** Where the track's loop ends (notes past it rest while it loops). */
+  protected readonly loopEnd = computed(() => {
+    const t = this.track();
+    return t ? this.transport.trackLoop(t) : SONG_BEATS;
+  });
+  protected readonly playhead = computed(() => (this.transport.beats() % this.loopEnd()) * BEAT);
 
   private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
 

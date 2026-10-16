@@ -1,0 +1,273 @@
+// CHORD-8: a deep indigo case with cream silkscreen, a green LCD top centre, eight chunky
+// rubber pads that glow amber while they play, and small black knobs below.
+:host {
+  --knob: 16px;
+  --cap-bg: #121320;
+  --cap-ring: #4a4d72;
+  --ink: var(--cream);
+  --face: #23264a;
+  --pad: #3a3e6b;
+  --amber: #ffb547;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  height: 100%;
+  padding: 6px 8px 0;
+  box-sizing: border-box;
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(0deg, #ffffff06 0 1px, #00000000 1px 4px),
+    linear-gradient(180deg, #2b2f58, var(--face) 55%, #1b1d3a);
+  font: 6px/1 var(--font-pixel);
+}
+h3 {
+  margin: 0 0 3px;
+  font: 6px/1 var(--font-pixel);
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--amber);
+}
+.lbl {
+  font: 5px/1.15 var(--font-pixel);
+  text-align: center;
+  white-space: nowrap;
+}
+.ctl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 34px;
+}
+section {
+  padding: 3px 4px;
+  box-shadow: inset 0 0 0 1px #ffffff1f;
+}
+
+// ── Top: name, LCD, generator ──
+.top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+}
+.id {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  .model {
+    font: 13px/1 var(--font-pixel);
+    letter-spacing: 0.04em;
+  }
+  .sub {
+    font: 5px/1 var(--font-pixel);
+    color: #a7a9cf;
+  }
+}
+.lcd {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  height: 34px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: #1c2c12;
+  background: #9fcf6a;
+  box-shadow:
+    inset 0 0 0 2px #0d0e12,
+    inset 3px 3px 0 #00000026;
+  .chord {
+    font: 16px/1 var(--font-mono);
+    white-space: nowrap;
+  }
+  .line {
+    font: 5px/1 var(--font-pixel);
+    white-space: nowrap;
+    b {
+      margin-left: 4px;
+      padding: 0 2px;
+      color: #9fcf6a;
+      background: #1c2c12;
+      font-weight: normal;
+    }
+  }
+}
+.gen {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+.btn {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  color: var(--ink);
+  background: #121320;
+  box-shadow:
+    inset 0 0 0 1px #6b6fa3,
+    0 2px 0 #00000080;
+  font: 12px/1 var(--font-mono);
+  cursor: pointer;
+  &:active {
+    translate: 0 1px;
+    box-shadow: inset 0 0 0 1px #6b6fa3;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+  }
+}
+.led {
+  display: block;
+  width: 6px;
+  height: 6px;
+  background: #4a1d22;
+  &.on {
+    background: #ff4d5a;
+    box-shadow: 0 0 6px #ff4d5a;
+  }
+}
+.kbd-mark {
+  align-self: flex-start;
+  padding: 2px 3px;
+  font: 6px/1 var(--font-pixel);
+  font-style: normal;
+  color: #18181b;
+  background: var(--green);
+  box-shadow: 0 0 0 1px #18181b;
+}
+
+// ── Middle: pads and harmony ──
+.mid {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.pads {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  width: 54%;
+}
+.pad {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px;
+  border: none;
+  color: var(--ink);
+  background: var(--pad);
+  box-shadow:
+    inset 0 0 0 2px #0d0e12,
+    inset -3px -3px 0 #00000055,
+    inset 3px 3px 0 #ffffff1c;
+  cursor: pointer;
+  touch-action: none;
+  text-align: left;
+  .num {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    font: 5px/1 var(--font-pixel);
+    color: #a7a9cf;
+  }
+  .rn {
+    font: 6px/1 var(--font-pixel);
+    color: var(--amber);
+  }
+  .nm {
+    max-width: 100%;
+    overflow: hidden;
+    font: 11px/1 var(--font-mono);
+    white-space: nowrap;
+  }
+  &.next {
+    box-shadow:
+      inset 0 0 0 2px #ff4d5a,
+      inset -3px -3px 0 #00000055;
+  }
+  &.lit {
+    color: #2a1a04;
+    background: var(--amber);
+    box-shadow:
+      inset 0 0 0 2px #0d0e12,
+      inset 3px 3px 0 #00000033,
+      0 0 8px #ffb54799;
+    .rn,
+    .num {
+      color: #5a3a08;
+    }
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+  }
+}
+.harmony {
+  flex: 1;
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    row-gap: 4px;
+    justify-items: center;
+  }
+}
+.toggle {
+  position: relative;
+  width: 9px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: #0b0b0c;
+  box-shadow: inset 0 0 0 1px #6b6fa3;
+  cursor: pointer;
+  i {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    height: 6px;
+    background: #6b6fa3;
+    transition: bottom 0.08s;
+  }
+  &.on i {
+    bottom: 8px;
+    background: var(--amber);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+  }
+}
+
+// ── Player FX ──
+.player {
+  display: flex;
+  gap: 5px;
+  justify-content: space-between;
+  section {
+    flex: auto;
+  }
+  .row {
+    display: flex;
+    justify-content: space-around;
+  }
+}
+
+// ── The NOTE jacks' legends (the sockets themselves are drawn by the floor) ──
+.jacks {
+  display: flex;
+  justify-content: space-between;
+  height: 14px;
+  padding: 0 22px;
+  font: 5px/14px var(--font-pixel);
+  color: #a7a9cf;
+}

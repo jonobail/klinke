@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { AudioEngine } from './audio/audio-engine';
 import { deleteTake, getTake, putTake, takeIds } from './audio/takes-store';
-import { BEATS_PER_BAR, SONG_BEATS } from './core/transport';
+import { BEATS_PER_BAR, SONG_BEATS, loopRepeats } from './core/transport';
 import { encodeWav, joinChunks, peaks, trimStart } from './core/wav';
 import { PatchStore } from './patch-store';
 import { Transport, type Take, type Track } from './transport';
@@ -34,7 +34,9 @@ export class Recorder {
   readonly exporting = signal<number | null>(null);
 
   /** Takes being recorded, by track; set the moment REC starts so a quick stop still finds them. */
-  private captures = new Map<string, Promise<{ capture: Capture; anchor: Anchor }>>();
+  private captures = new Map<string, Promise<{ capture: Capture; anchor: Anchor; loop: number }>>();
+  /** Watches looping tracks while recording, to start a new take each time their loop comes round. */
+  private watch?: ReturnType<typeof setInterval>;
   private readonly buffers = new Map<string, AudioBuffer>();
   private playing: AudioBufferSourceNode[] = [];
   private generation = 0;
@@ -45,11 +47,14 @@ export class Recorder {
     const ts = this.transport.tracks();
     const solo = ts.some((t) => t.solo);
     const rec = this.transport.recording();
-    return JSON.stringify(
+    return JSON.stringify([
+      this.transport.loopBeats(),
       ts
         .filter((t) => t.type === 'audio' && !t.mute && (!solo || t.solo) && !(rec && t.arm))
-        .flatMap((t) => t.takes.map((k) => [k.id, k.start, k.duration])),
-    );
+        .flatMap((t) =>
+          t.takes.map((k) => [k.id, k.start, k.duration, this.transport.trackLoop(t)]),
+        ),
+    ]);
   });
 
   constructor() {
@@ -59,7 +64,11 @@ export class Recorder {
       this.transport.epoch();
       untracked(() => {
         void this.finishTakes();
-        if (on) this.startTakes();
+        clearInterval(this.watch);
+        if (on) {
+          this.startTakes();
+          this.watch = setInterval(() => this.loopsComingRound(), 10);
+        }
       });
     });
     // Takes play while the transport runs.
@@ -81,12 +90,15 @@ export class Recorder {
     return { time: ctx.currentTime, beat: this.transport.beatNow(), bpm: this.transport.bpm() };
   }
 
-  private startTakes() {
-    const armed = this.transport.tracks().filter((t) => t.type === 'audio' && t.arm);
+  private startTakes(only?: string) {
+    const armed = this.transport
+      .tracks()
+      .filter((t) => t.type === 'audio' && t.arm && (!only || t.id === only));
     for (const t of armed) {
+      const loop = this.transport.trackLoop(t);
       const pending = this.engine
         .capture(t.source)
-        .then((capture) => ({ capture, anchor: this.anchor()! }));
+        .then((capture) => ({ capture, anchor: this.anchor()!, loop }));
       this.captures.set(t.id, pending);
       void pending.then(({ anchor }) => {
         if (this.captures.get(t.id) === pending)
@@ -95,12 +107,34 @@ export class Recorder {
     }
   }
 
-  private async finishTakes() {
-    const done = [...this.captures];
-    this.captures.clear();
-    this.live.set({});
+  /** A track looping shorter than the song starts a new take each time its loop comes round. */
+  private lastBeat = -1;
+  private loopsComingRound() {
+    const now = this.transport.beatNow();
+    const last = this.lastBeat;
+    this.lastBeat = now;
+    if (last < 0 || now < last) return; // the song loop wrapping is an epoch: handled already
+    for (const t of this.transport.tracks()) {
+      const loop = this.transport.trackLoop(t);
+      if (!this.captures.has(t.id) || loop >= this.transport.loopBeats()) continue;
+      if (Math.floor(now / loop) !== Math.floor(last / loop)) {
+        void this.finishTakes(t.id);
+        this.startTakes(t.id);
+      }
+    }
+  }
+
+  private async finishTakes(only?: string) {
+    this.lastBeat = -1;
+    const done = [...this.captures].filter(([id]) => !only || id === only);
+    for (const [id] of done) this.captures.delete(id);
+    this.live.update((l) => {
+      if (!only) return {};
+      const { [only]: _, ...rest } = l;
+      return rest;
+    });
     for (const [trackId, pending] of done) {
-      const { capture, anchor } = await pending;
+      const { capture, anchor, loop } = await pending;
       const { frame, chunks } = await capture.stop();
       const ctx = this.engine.context!;
       let channels = joinChunks(chunks, 2);
@@ -114,8 +148,9 @@ export class Recorder {
         );
         start = anchor.beat;
       }
-      // A take can't run past the end of the loop.
-      const room = Math.round(((SONG_BEATS - start) * 60 * ctx.sampleRate) / anchor.bpm);
+      // Takes sit at their place within the track's loop, and can't run past its end.
+      start %= loop;
+      const room = Math.round(((loop - start) * 60 * ctx.sampleRate) / anchor.bpm);
       channels = channels.map((c) => c.subarray(0, Math.max(0, room)));
       const duration = (channels[0]?.length ?? 0) / ctx.sampleRate;
       if (duration < MIN_TAKE_S) continue;
@@ -196,26 +231,29 @@ export class Recorder {
     const gen = this.generation;
     const bus = this.engine.trackBus();
     if (!bus || !this.engine.running()) return;
-    const takes: Take[] = JSON.parse(this.playable()).map(([id, start, duration]: number[]) => ({
-      id,
-      start,
-      duration,
-    }));
-    for (const take of takes) {
-      void this.buffer(take.id).then((buf) => {
+    const [song, list] = JSON.parse(this.playable()) as [
+      number,
+      [string, number, number, number][],
+    ];
+    for (const [id, start, duration, loop] of list) {
+      void this.buffer(id).then((buf) => {
         if (!buf || gen !== this.generation) return;
         // Anchor per take: buffers loading from storage arrive a moment later.
         const a = this.anchor()!;
         const spb = 60 / a.bpm;
-        const end = Math.min(take.start + take.duration / spb, SONG_BEATS);
-        if (end <= a.beat) return; // already behind the playhead this time round
-        const src = this.engine.context!.createBufferSource();
-        src.buffer = buf;
-        src.connect(bus);
-        const lead = Math.max(0, take.start - a.beat) * spb;
-        const offset = Math.max(0, a.beat - take.start) * spb;
-        src.start(a.time + lead, offset, (end - Math.max(take.start, a.beat)) * spb);
-        this.playing.push(src);
+        // Once per repeat of the track's loop (just once when it follows the song).
+        for (const at of loopRepeats(loop, song)) {
+          const from = at + start;
+          const end = Math.min(from + duration / spb, at + loop, song);
+          if (end <= a.beat) continue; // already behind the playhead this time round
+          const src = this.engine.context!.createBufferSource();
+          src.buffer = buf;
+          src.connect(bus);
+          const lead = Math.max(0, from - a.beat) * spb;
+          const offset = Math.max(0, a.beat - from) * spb;
+          src.start(a.time + lead, offset, (end - Math.max(from, a.beat)) * spb);
+          this.playing.push(src);
+        }
       });
     }
   }
@@ -224,16 +262,22 @@ export class Recorder {
 
   /** How much of the song to bounce: through the last note or take, plus a bar for tails. */
   private songBeats(): number {
+    const song = this.transport.loopBeats();
+    // A shorter song loop is exported exactly, so the file loops cleanly.
+    if (song < SONG_BEATS) return song;
     const spb = 60 / this.transport.bpm();
-    const ends = this.transport
-      .tracks()
-      .flatMap((t) => [
+    const ends = this.transport.tracks().flatMap((t) => {
+      const content = t.notes.length + t.takes.length > 0;
+      // A track looping inside the song fills it to the end.
+      if (content && this.transport.trackLoop(t) < song) return [song];
+      return [
         ...t.notes.map((n) => n.start + n.length),
         ...t.takes.map((k) => k.start + k.duration / spb),
-      ]);
+      ];
+    });
     const last = Math.max(0, ...ends);
     const bars = Math.max(4, Math.ceil(last / BEATS_PER_BAR) + 1);
-    return Math.min(SONG_BEATS, bars * BEATS_PER_BAR);
+    return Math.min(song, bars * BEATS_PER_BAR);
   }
 
   /** Plays the song once from the top while recording MAIN, then downloads the WAV. Again cancels. */

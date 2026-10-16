@@ -10,7 +10,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { GEAR, type GearKind } from '../core/gear';
+import { GEAR, type GearKind, jackDef } from '../core/gear';
 import {
   CELL,
   type Gear,
@@ -39,6 +39,8 @@ import { PatchStore } from '../patch-store';
 /** The drag-and-drop payload type for gear coming off the inventory shelf. */
 export const GEAR_MIME = 'application/x-klinke-gear';
 
+const isNoteJack = (kind: GearKind, jack: string) => jackDef(kind, jack)?.signal === 'note';
+
 /** Room above a box for its name tag, in floor px. */
 const TAG_ROOM = 34;
 /** A touch has to move this far (screen px) before it drags gear or stops counting as a tap. */
@@ -55,6 +57,10 @@ interface JackView {
   y: number;
   plugged: boolean;
   pending: boolean;
+  /** Carries note events (a NOTE jack), not audio. */
+  note: boolean;
+  /** A cable is being patched from a jack this one can't take (audio vs NOTE). */
+  dim: boolean;
   label: string;
 }
 
@@ -148,6 +154,7 @@ export class PatchFloor {
     const byId = new Map(p.gear.map((g) => [g.id, g]));
     return p.cables.map((c) => ({
       id: c.id,
+      note: isNoteJack(byId.get(c.from.gear)!.kind, c.from.jack),
       d: cablePath(
         jackPoint(byId.get(c.from.gear)!, c.from.jack),
         jackPoint(byId.get(c.to.gear)!, c.to.jack),
@@ -158,16 +165,22 @@ export class PatchFloor {
   protected readonly jacks = computed<JackView[]>(() => {
     const p = this.store.patch();
     const pending = this.store.pendingJack();
+    const pendingKind = pending && p.gear.find((g) => g.id === pending.gear)?.kind;
+    const pendingNote = pendingKind ? isNoteJack(pendingKind, pending.jack) : null;
     return p.gear.flatMap((g) =>
       GEAR[g.kind].jacks.map((j) => {
         const ref = { gear: g.id, jack: j.id };
+        const note = j.signal === 'note';
+        const name = j.label ?? (note ? `NOTE ${j.dir.toUpperCase()}` : j.id.toUpperCase());
         return {
           ref,
           dir: j.dir,
           ...jackPoint(g, j.id),
           plugged: !!cableAt(p, ref),
           pending: pending?.gear === g.id && pending.jack === j.id,
-          label: `${GEAR[g.kind].label} ${j.label ?? j.id.toUpperCase()}`,
+          note,
+          dim: pendingNote !== null && pendingNote !== note,
+          label: `${GEAR[g.kind].label} ${name}`,
         };
       }),
     );
@@ -177,6 +190,12 @@ export class PatchFloor {
     const ref = this.store.pendingJack();
     const gear = ref && this.store.patch().gear.find((g) => g.id === ref.gear);
     return gear ? cablePath(jackPoint(gear, ref.jack), this.pointer()) : null;
+  });
+  /** The cable being patched carries notes. */
+  protected readonly pendingNote = computed(() => {
+    const ref = this.store.pendingJack();
+    const gear = ref && this.store.patch().gear.find((g) => g.id === ref.gear);
+    return !!gear && isNoteJack(gear.kind, ref.jack);
   });
 
   constructor() {

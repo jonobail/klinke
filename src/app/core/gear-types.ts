@@ -20,8 +20,12 @@ export type GearKind =
   | 'ms20'
   | 'modelD'
   | 'sh101'
+  | 'ps3100'
   | 'mf104'
   | 'sp1200'
+  | 'chords'
+  | 'motion'
+  | 'choir'
   | 'mixer'
   | 'mult'
   | 'overdrive'
@@ -30,7 +34,8 @@ export type GearKind =
   | 'filter'
   | 'output'
   | DeviceKind;
-export type GearCategory = 'synth' | 'pedal' | 'mixer' | 'rack' | 'output';
+/** `midi`: note effects (CHORD-8, MOTION-15) that make no sound; they pass notes on NOTE cables. */
+export type GearCategory = 'synth' | 'midi' | 'pedal' | 'mixer' | 'rack' | 'output';
 export interface JackDef {
   id: string;
   dir: 'in' | 'out';
@@ -44,6 +49,11 @@ export interface JackDef {
   returns?: boolean;
   /** Name printed by the jack, when it isn't just its id (e.g. LOOP OUT). */
   label?: string;
+  /**
+   * What the jack carries: audio (the default) or `note` events (see `NoteEvent` in
+   * `audio/unit.ts`). Cables only join jacks that carry the same thing.
+   */
+  signal?: 'note';
 }
 
 export interface ParamDef {

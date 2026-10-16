@@ -41,21 +41,30 @@ export function recordedNote(
   upBeat: number,
   grid: Grid,
   velocity = 100,
+  loop = SONG_BEATS,
 ): Note {
-  const start = Math.min(quantize(downBeat, grid), SONG_BEATS - MIN_LENGTH) % SONG_BEATS;
-  const played = upBeat >= downBeat ? upBeat - downBeat : SONG_BEATS - downBeat;
+  // Positions are within the track's loop (the whole song unless the track loops shorter).
+  downBeat %= loop;
+  upBeat %= loop;
+  const start = Math.min(quantize(downBeat, grid), loop - MIN_LENGTH) % loop;
+  const played = upBeat >= downBeat ? upBeat - downBeat : loop - downBeat;
   const step = gridBeats(grid) || MIN_LENGTH;
   const length = Math.min(
     Math.max(step, step ? Math.round(played / step) * step : played),
-    SONG_BEATS - start,
+    loop - start,
   );
   return { id, note, start, length, velocity };
 }
 
 /** Notes whose start falls in [from, to), allowing for the loop wrapping (to < from). */
-export function notesStarting(notes: Note[], from: number, to: number): Note[] {
-  if (to >= from) return notes.filter((n) => n.start >= from && n.start < to);
-  return notes.filter((n) => n.start >= from || n.start < to);
+/**
+ * Notes starting in [from, to). `to < from` means the window wrapped round the loop; notes from
+ * `loop` on are past the end of a looping track and never play.
+ */
+export function notesStarting(notes: Note[], from: number, to: number, loop = Infinity): Note[] {
+  const live = notes.filter((n) => n.start < loop);
+  if (to >= from) return live.filter((n) => n.start >= from && n.start < to);
+  return live.filter((n) => n.start >= from || n.start < to);
 }
 
 /** Sorted by start, then pitch (the order they're stored in). */

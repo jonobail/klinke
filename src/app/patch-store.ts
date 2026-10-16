@@ -27,6 +27,7 @@ export const SMALL_LAYOUT = '(max-width: 760px), (max-height: 560px)';
 const ERRORS: Record<PatchError, string> = {
   'same-gear': "can't patch a box into itself",
   direction: 'patch an OUT jack to an IN jack',
+  signal: 'NOTE jacks only patch to NOTE jacks',
   cycle: 'that would make a feedback loop',
   'unknown-jack': 'no such jack',
 };

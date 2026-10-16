@@ -1,8 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { GEAR } from '../core/gear';
 import type { Note } from '../core/notes';
-import { SONG_BARS, SONG_BEATS } from '../core/transport';
-import { AudioEngine } from '../audio/audio-engine';
+import { LOOP_BARS, SONG_BARS, SONG_BEATS, loopRepeats } from '../core/transport';
+import { AudioEngine, playsNotes } from '../audio/audio-engine';
 import { PatchStore } from '../patch-store';
 import { Recorder } from '../recorder';
 import { Transport, type Take, type Track } from '../transport';
@@ -24,23 +24,57 @@ export class Timeline {
     { key: 'solo', label: 'S', title: 'Solo' },
   ] as const;
   protected readonly playhead = computed(() => (this.transport.beats() / SONG_BEATS) * 100);
-  /** Gear a MIDI track can play: the synths and the SP-1200. */
+  /** Gear a MIDI track can play: the synths, the SP-1200 and the note effects. */
   protected readonly instruments = computed(() =>
     this.store
       .patch()
-      .gear.filter((g) => GEAR[g.kind].category === 'synth')
+      .gear.filter((g) => playsNotes(g.kind))
       .map((g) => ({ id: g.id, label: GEAR[g.kind].label })),
   );
 
-  /** What an audio track can record: the mix, or any one piece of gear's OUT. */
+  /** What an audio track can record: the mix, or any one piece of gear's audio OUT. */
   protected readonly sources = computed(() => [
     { id: 'main', label: 'MAIN MIX' },
     ...this.store
       .patch()
-      .gear.filter((g) => g.kind !== 'output')
+      .gear.filter(
+        (g) => g.kind !== 'output' && GEAR[g.kind].jacks.some((j) => j.dir === 'out' && !j.signal),
+      )
       .map((g) => ({ id: g.id, label: `${GEAR[g.kind].label} (${g.id})` })),
   ]);
   private readonly waves = new Map<string, string>();
+
+  /** Song loop slider positions: 1, 2, 4, 8, 16 bars. */
+  protected readonly LOOP_BARS = LOOP_BARS;
+  /** Track loop slider positions: OFF (follow the song), then 1, 2, 4, 8 bars. */
+  protected readonly TRACK_LOOPS = [0, 1, 2, 4, 8];
+  protected readonly songLoopIndex = computed(() =>
+    LOOP_BARS.indexOf(this.transport.loopBars() as (typeof LOOP_BARS)[number]),
+  );
+
+  protected setSongLoop(e: Event) {
+    this.transport.setLoop(LOOP_BARS[Number((e.target as HTMLInputElement).value)]);
+  }
+
+  protected setTrackLoop(t: Track, e: Event) {
+    const loop = this.TRACK_LOOPS[Number((e.target as HTMLInputElement).value)];
+    this.transport.updateTrack(t.id, () => ({ loop }));
+  }
+
+  /** The track's own loop is in force (it's shorter than the song loop). */
+  protected looping(t: Track) {
+    return this.transport.trackLoop(t) < this.transport.loopBeats();
+  }
+
+  protected trackLoopLabel(t: Track) {
+    if (!t.loop) return 'OFF';
+    return this.looping(t) ? `${t.loop} BAR${t.loop > 1 ? 'S' : ''}` : 'SONG';
+  }
+
+  /** Where each repeat of a track starts (just [0] when it follows the song). */
+  protected repeats(t: Track) {
+    return loopRepeats(this.transport.trackLoop(t), this.transport.loopBeats());
+  }
 
   protected pct(beats: number) {
     return (beats / SONG_BEATS) * 100;
@@ -49,7 +83,8 @@ export class Timeline {
   /** Click the ruler to move the playhead, snapped to the beat. */
   protected seek(e: MouseEvent) {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    this.transport.seek(Math.floor(((e.clientX - r.left) / r.width) * SONG_BEATS));
+    const beat = Math.floor(((e.clientX - r.left) / r.width) * SONG_BEATS);
+    if (beat < this.transport.loopBeats()) this.transport.seek(beat);
   }
 
   protected toggleType(t: Track) {
@@ -92,8 +127,21 @@ export class Timeline {
   }
 
   /** A take's length on the timeline at the current tempo. */
-  protected takeBeats(take: Take) {
-    return Math.min(SONG_BEATS - take.start, (take.duration * this.transport.bpm()) / 60);
+  protected takeBeats(t: Track, take: Take) {
+    return Math.min(
+      this.transport.trackLoop(t) - take.start,
+      (take.duration * this.transport.bpm()) / 60,
+    );
+  }
+
+  protected noteBeats(t: Track, n: Note) {
+    return Math.min(n.length, this.transport.trackLoop(t) - n.start);
+  }
+
+  /** Notes inside the track's loop (later ones never play while it loops). */
+  protected loopNotes(t: Track) {
+    const loop = this.transport.trackLoop(t);
+    return t.notes.filter((n) => n.start < loop);
   }
 
   /** The take's waveform as one SVG path: a vertical line per peak, in a 100-tall box. */

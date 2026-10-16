@@ -8,7 +8,7 @@
         [attr.aria-pressed]="filter() === f"
         (click)="filter.set(f)"
       >
-        {{ f.toUpperCase() }}
+        {{ filterLabels[f] ?? f.toUpperCase() }}
       </button>
     }
   </div>

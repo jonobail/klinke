@@ -267,3 +267,41 @@ test('patches with gear that no longer exists load without it (and its cables)',
   );
   assert.equal(back.cables.length, 0);
 });
+
+test('NOTE cables join NOTE jacks only, and note loops are refused', () => {
+  const p = withGear('chords', 'motion', 'choir', 'motion', 'delay'); // g1 … g5
+  const notes = (from: string, to: string) =>
+    [
+      { gear: from, jack: 'notesOut' },
+      { gear: to, jack: 'notesIn' },
+    ] as const;
+  // Notes into audio, audio into notes: both refused.
+  assert.equal(
+    connect(p, { gear: 'g1', jack: 'notesOut' }, { gear: 'g5', jack: 'in' }).error,
+    'signal',
+  );
+  assert.equal(
+    connect(p, { gear: 'g3', jack: 'out' }, { gear: 'g2', jack: 'notesIn' }).error,
+    'signal',
+  );
+  // CHORD-8 → MOTION-15 → CHOIR-16 → delay: a note chain into an audio chain.
+  let chain = connect(p, ...notes('g1', 'g2')).patch;
+  chain = connect(chain, ...notes('g2', 'g3')).patch;
+  chain = connect(chain, { gear: 'g3', jack: 'out' }, { gear: 'g5', jack: 'in' }).patch;
+  assert.equal(chain.cables.length, 3);
+  const order = signalOrder(chain);
+  for (const c of chain.cables) assert.ok(order.indexOf(c.from.gear) < order.indexOf(c.to.gear));
+  // Two MOTION-15s feeding each other would loop forever.
+  const loop = connect(p, ...notes('g2', 'g4')).patch;
+  assert.equal(connect(loop, ...notes('g4', 'g2')).error, 'cycle');
+  // And note cables survive a save and load.
+  const back = parsePatch(JSON.stringify(chain))!;
+  assert.deepEqual(
+    back.cables.map((c) => [c.from, c.to]),
+    chain.cables.map((c) => [c.from, c.to]),
+  );
+  // A stored cable between mismatched jacks is dropped on load.
+  const bad = JSON.parse(JSON.stringify(p));
+  bad.cables.push({ from: { gear: 'g1', jack: 'notesOut' }, to: { gear: 'g5', jack: 'in' } });
+  assert.equal(parsePatch(JSON.stringify(bad))!.cables.length, 0);
+});

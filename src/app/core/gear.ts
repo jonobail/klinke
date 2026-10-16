@@ -16,6 +16,10 @@ import {
   sel,
 } from './gear-types.ts';
 
+import { CHOIR_GEAR } from './choir.ts';
+import { CHORDS_GEAR } from './chords.ts';
+import { MOTION_GEAR } from './motion.ts';
+import { MG1_LABELS, NOTE_NAMES, SCALE_LABELS, WAVE_LABELS } from './ps3100.ts';
 import { KIT_CHANNELS, PADS, PREAMPS, SOUND_IDS } from './sp1200.ts';
 
 export * from './gear-types.ts';
@@ -300,6 +304,71 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
   },
   // SP-1200 sampling drum machine, after the owner's manual. Global controls, then per sound
   // location (A1–D8): level, slider (tune or decay), decay mode, output channel, truncation and loop.
+  // PS-3100 (1977): fully polyphonic, a filter / amp / envelope per key, then three resonators,
+  // AM, ensemble and VCAs (core/ps3100.ts). Of the patch panel only the audio outputs are jacks
+  // here: FINAL OUT, PHONES and DIRECT OUT, where they sit at the right of the panel.
+  ps3100: {
+    kind: 'ps3100',
+    label: 'PS-3100',
+    category: 'synth',
+    w: 30,
+    h: 13,
+    jacks: [
+      { id: 'out', dir: 'out', fx: 0.975, fy: 0.27, label: 'FINAL OUT' },
+      { id: 'phones', dir: 'out', fx: 0.975, fy: 0.335, label: 'PHONES' },
+      { id: 'direct', dir: 'out', fx: 0.975, fy: 0.4, label: 'DIRECT OUT' },
+    ],
+    params: [
+      ...NOTE_NAMES.map((n, i) => bi(`temper${i}`, n)),
+      sel('wave', 'WAVE FORM', WAVE_LABELS, 0),
+      p('pwmDepth', 'PWM INTENSITY', 0.3),
+      bi('fine', 'FINE'),
+      bi('coarse', 'COARSE'),
+      sel('scale', 'SCALE', SCALE_LABELS, 1),
+      p('fmMg1', 'MG1 INTENSITY', 0),
+      p('fmSh', 'S/H INTENSITY', 0),
+      p('cutoff', 'CUTOFF FREQUENCY', 0.55),
+      p('peak', 'PEAK', 0.2),
+      bi('kbdBalance', 'KBD FILTER BALANCE'),
+      p('expand', 'EXPAND', 0.35),
+      p('cutMg1', 'MG1 INTENSITY', 0),
+      p('cutSh', 'S/H INTENSITY', 0),
+      p('attack', 'ATTACK TIME', 0.1),
+      p('decay', 'DECAY TIME', 0.45),
+      p('sustain', 'SUSTAIN LEVEL', 0.6),
+      sel('release', 'RELEASE', ['DAMPED', 'ON'], 1),
+      sel('kbdHold', 'KBD HOLD', ['OFF', 'ON'], 0),
+      p('resIntensity', 'RESONANCE INTENSITY', 0),
+      p('res1', 'RESONATOR 1', 0.3),
+      p('res2', 'RESONATOR 2', 0.55),
+      p('res3', 'RESONATOR 3', 0.8),
+      sel('resMg2', 'PEAK FREQ MOD BY MG2', ['OFF', 'ON'], 0),
+      p('resExt', 'EXT PEAK FREQ MOD', 0),
+      p('shRate', 'CLOCK FREQUENCY', 0.5),
+      sel('shSync', 'SYNCHRO', ['OFF', 'ON'], 0),
+      p('mg1Rate', 'MG1 FREQUENCY', 0.45),
+      sel('mg1Wave', 'MG1 WAVE FORM', MG1_LABELS, 2),
+      p('mg2Rate', 'MG2 FREQUENCY', 0.5),
+      p('am', 'AMPLITUDE MODULATOR', 0),
+      sel('ensemble', 'ENSEMBLE', ['OFF', 'ON'], 1),
+      p('gegDelay', 'DELAY', 0),
+      p('gegAttack', 'ATTACK', 0.3),
+      p('gegRelease', 'RELEASE', 0.4),
+      sel('kbdTrigger', 'KBD TRIGGER SELECT', ['OFF', 'SINGLE', 'MULTI'], 1),
+      sel('gegAuto', 'AUTO', ['OFF', 'ON'], 0),
+      sel('gegVca', 'GEG → VCA 2', ['OFF', 'ON'], 0),
+      p('vp1a', 'VP1 LIMITER A', 0),
+      p('vp1b', 'VP1 LIMITER B', 0),
+      p('vp2a', 'VP2 LIMITER A', 0),
+      p('vp2b', 'VP2 LIMITER B', 0),
+      bi('kbdVolBalance', 'KEYBOARD VOLUME BALANCE'),
+      p('volume', 'FINAL VOLUME', 0.75),
+      p('phones', 'PHONE VOLUME', 0.6),
+      p('direct', 'DIRECT VOLUME', 0.6),
+    ],
+    // The panel is its own component (gear/ps3100-panel), laid out like the hardware.
+    keyboard: { from: -12, keys: 48 }, // C–B, 4 octaves (48 keys)
+  },
   sp1200: {
     kind: 'sp1200',
     label: 'SP-1200',
@@ -346,6 +415,11 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
       }),
     ],
   },
+  // The voice chain: CHORD-8 → MOTION-15 → CHOIR-16 over NOTE cables. Each lives in its own
+  // module with its logic.
+  chords: CHORDS_GEAR,
+  motion: MOTION_GEAR,
+  choir: CHOIR_GEAR,
   // A passive mult: one input copied to three outputs, for sending a signal two places at once
   // (e.g. a synth to both its effects chain and the SP-1200's SAMPLE IN).
   mult: {
@@ -384,8 +458,12 @@ export const INVENTORY: GearKind[] = [
   'ms20',
   'modelD',
   'sh101',
+  'ps3100',
   'mixer',
   'sp1200',
+  'chords',
+  'motion',
+  'choir',
   'mult',
   'mf104',
   'overdrive',

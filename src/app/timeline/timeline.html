@@ -1,5 +1,17 @@
 <div class="head ruler-head">
-  <span>TRACKS</span>
+  <label class="song-loop" title="Song loop: the song plays round its first bars">
+    <span>LOOP</span>
+    <input
+      type="range"
+      min="0"
+      [max]="LOOP_BARS.length - 1"
+      step="1"
+      aria-label="Song loop length in bars"
+      [value]="songLoopIndex()"
+      (input)="setSongLoop($event)"
+    />
+    <b>{{ transport.loopBars() }}</b>
+  </label>
   <button
     type="button"
     class="add"
@@ -12,8 +24,9 @@
 </div>
 <div class="ruler" title="Click to move the playhead" (click)="seek($event)">
   @for (b of bars; track b) {
-    <span>{{ b }}</span>
+    <span [class.out]="b > transport.loopBars()">{{ b }}</span>
   }
+  <i class="beyond" [style.left.%]="pct(transport.loopBeats())"></i>
 </div>
 
 @for (t of transport.tracks(); track t.id; let i = $index) {
@@ -55,14 +68,36 @@
       title="Click to open in the piano roll"
       (click)="open(t)"
     >
-      @for (n of t.notes; track n.id) {
-        <i
-          class="mini"
-          [style.left.%]="pct(n.start)"
-          [style.width.%]="pct(n.length)"
-          [style.top.%]="noteTop(t, n)"
-        ></i>
+      @for (at of repeats(t); track at; let first = $first) {
+        @if (!first) {
+          <i class="repeat" [style.left.%]="pct(at)"></i>
+        }
+        @for (n of loopNotes(t); track n.id) {
+          <i
+            class="mini"
+            [class.ghost]="!first"
+            [style.left.%]="pct(at + n.start)"
+            [style.width.%]="pct(noteBeats(t, n))"
+            [style.top.%]="noteTop(t, n)"
+          ></i>
+        }
       }
+      <i class="beyond" [style.left.%]="pct(transport.loopBeats())"></i>
+      <label class="track-loop" [class.on]="looping(t)" (click)="$event.stopPropagation()">
+        <span>LOOP</span>
+        <input
+          type="range"
+          min="0"
+          [max]="TRACK_LOOPS.length - 1"
+          step="1"
+          [attr.aria-label]="t.name + ' loop length in bars'"
+          title="Repeat this track's first bars (OFF follows the song loop)"
+          [value]="TRACK_LOOPS.indexOf(t.loop)"
+          (input)="setTrackLoop(t, $event)"
+        />
+        <b>{{ trackLoopLabel(t) }}</b>
+      </label>
+
       <select
         class="instrument"
         [attr.aria-label]="t.name + ' instrument'"
@@ -87,17 +122,28 @@
     </div>
   } @else {
     <div class="lane audio" [class.muted]="t.mute">
-      @for (take of t.takes; track take.id) {
-        <div class="take" [style.left.%]="pct(take.start)" [style.width.%]="pct(takeBeats(take))">
-          <svg
-            [attr.viewBox]="'0 0 ' + take.peaks.length + ' 100'"
-            preserveAspectRatio="none"
-            aria-hidden="true"
+      @for (at of repeats(t); track at; let first = $first) {
+        @if (!first) {
+          <i class="repeat" [style.left.%]="pct(at)"></i>
+        }
+        @for (take of t.takes; track take.id) {
+          <div
+            class="take"
+            [class.ghost]="!first"
+            [style.left.%]="pct(at + take.start)"
+            [style.width.%]="pct(takeBeats(t, take))"
           >
-            <path [attr.d]="wave(take)" />
-          </svg>
-        </div>
+            <svg
+              [attr.viewBox]="'0 0 ' + take.peaks.length + ' 100'"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <path [attr.d]="wave(take)" />
+            </svg>
+          </div>
+        }
       }
+      <i class="beyond" [style.left.%]="pct(transport.loopBeats())"></i>
       @let start = liveStart(t);
       @if (start !== undefined) {
         <div
@@ -121,6 +167,20 @@
           <option [value]="t.source" selected>— gone —</option>
         }
       </select>
+      <label class="track-loop" [class.on]="looping(t)" (click)="$event.stopPropagation()">
+        <span>LOOP</span>
+        <input
+          type="range"
+          min="0"
+          [max]="TRACK_LOOPS.length - 1"
+          step="1"
+          [attr.aria-label]="t.name + ' loop length in bars'"
+          title="Repeat this track's first bars (OFF follows the song loop)"
+          [value]="TRACK_LOOPS.indexOf(t.loop)"
+          (input)="setTrackLoop(t, $event)"
+        />
+        <b>{{ trackLoopLabel(t) }}</b>
+      </label>
       @if (t.takes.length) {
         <button
           type="button"

@@ -1,4 +1,7 @@
 :host {
+  // NOTE cables and jacks: blue, so they never pass for audio.
+  --note-cable: #4fa3e0;
+  --note-cable-hi: #9fd2f5;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -120,6 +123,22 @@
       stroke-dasharray: 8 6;
     }
   }
+  // A NOTE cable: blue, with pixel "data" dashes along it.
+  &.note {
+    .wire {
+      stroke: var(--note-cable);
+      stroke-width: 4px;
+    }
+    .shade {
+      stroke-width: 8px;
+    }
+    &:not(.pending) .wire {
+      stroke-dasharray: 10 3;
+    }
+    &:hover .wire {
+      stroke: var(--note-cable-hi);
+    }
+  }
 }
 
 .jack {
@@ -154,6 +173,48 @@
     background: #fff;
     animation: pulse 0.6s steps(2) infinite;
   }
+  // A NOTE jack: a 5-pin DIN socket, a blue ring round an arc of pins.
+  &.note {
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    box-shadow:
+      inset 0 0 0 3px var(--note-cable),
+      0 0 0 2px #0d0e12;
+    &::after {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 4px;
+      width: 2px;
+      height: 2px;
+      background: #d9d6cc;
+      box-shadow:
+        -3px 1px #d9d6cc,
+        3px 1px #d9d6cc,
+        -3px 4px #d9d6cc,
+        3px 4px #d9d6cc;
+    }
+    &.in {
+      box-shadow:
+        inset 0 0 0 3px var(--note-cable-hi),
+        0 0 0 2px #0d0e12;
+    }
+    &.plugged {
+      background: var(--note-cable);
+      box-shadow:
+        inset 0 0 0 2px var(--note-cable-hi),
+        0 0 0 2px #0d0e12;
+    }
+    &.pending {
+      animation-name: pulse-note;
+    }
+  }
+  // While patching, jacks of the other kind (audio vs NOTE) can't take the cable.
+  &.dim {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
   &:focus-visible {
     outline: 2px solid #fff;
     outline-offset: 2px;
@@ -170,6 +231,11 @@
 @keyframes pulse {
   50% {
     background: var(--cable);
+  }
+}
+@keyframes pulse-note {
+  50% {
+    background: var(--note-cable);
   }
 }
 

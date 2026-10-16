@@ -24,9 +24,76 @@
   margin-right: auto;
   white-space: nowrap;
 }
-.ruler-head span {
-  margin-right: auto;
+.song-loop,
+.track-loop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
+  span {
+    font-size: 10px;
+  }
+  b {
+    min-width: 2ch;
+    font: 15px/1 var(--font-mono);
+    color: var(--text);
+  }
+  input {
+    width: 96px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+}
+.song-loop {
+  margin-right: auto;
+}
+.track-loop {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 1;
+  padding: 2px 6px;
+  background: #111216e6;
+  box-shadow: 0 0 0 1px var(--line);
+  input {
+    width: 64px;
+  }
+  b {
+    min-width: 6ch;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  &.on b {
+    color: var(--green);
+  }
+}
+.lane.audio .track-loop {
+  right: 32px;
+}
+/* Past the song loop: never plays. */
+.beyond {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(-45deg, #0c0d11cc 0 6px, #14151bcc 6px 12px);
+}
+/* Where a looping track starts over. */
+.repeat {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed var(--green);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.mini.ghost,
+.take.ghost {
+  opacity: 0.45;
 }
 .add,
 .flag {
@@ -56,6 +123,7 @@
 }
 
 .ruler {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(16, 1fr);
   align-items: center;
@@ -65,6 +133,9 @@
     padding-left: 10px;
     border-left: 2px solid var(--line);
     font: 17px/1 var(--font-mono);
+  }
+  span.out {
+    color: var(--muted);
   }
 }
 .lane {
@@ -170,9 +241,27 @@
     top: 3px;
     font-size: 8px;
   }
-  .empty {
-    left: 8px;
-    font-size: 14px;
+  // No room for hints beside the lane controls on a phone.
+  .lane .empty {
+    display: none;
+  }
+  .song-loop,
+  .track-loop {
+    gap: 3px;
+    span {
+      display: none;
+    }
+    input {
+      width: 48px;
+    }
+  }
+  .track-loop {
+    top: 2px;
+    padding: 1px 3px;
+    b {
+      min-width: 3ch;
+      font-size: 11px;
+    }
   }
 }
 

@@ -1,7 +1,6 @@
 import { Injectable, effect, inject, untracked } from '@angular/core';
 import { AudioEngine } from './audio/audio-engine';
 import { addNote, notesStarting, recordedNote } from './core/notes';
-import { SONG_BEATS } from './core/transport';
 import { PatchStore } from './patch-store';
 import { Transport, type Track } from './transport';
 
@@ -67,7 +66,8 @@ export class Sequencer {
 
   private write(t: Track, note: number, from: number, to: number, key: string) {
     this.down.delete(key);
-    const n = recordedNote(`r${Date.now().toString(36)}${this.noteIds++}`, note, from, to, t.grid);
+    const id = `r${Date.now().toString(36)}${this.noteIds++}`;
+    const n = recordedNote(id, note, from, to, t.grid, 100, this.transport.trackLoop(t));
     this.fresh.add(n.id);
     this.transport.updateTrack(t.id, (tr) => ({ notes: addNote(tr.notes, n) }));
   }
@@ -87,7 +87,8 @@ export class Sequencer {
 
   private startPlayback() {
     if (!this.transport.recording()) this.fresh.clear();
-    this.last = this.transport.beatNow();
+    // From just before where PLAY started, so a note right on that spot plays too.
+    this.last = this.transport.beats() - 1e-6;
     this.elapsed = 0;
     clearInterval(this.timer);
     this.timer = setInterval(() => this.tick(), TICK_MS);
@@ -102,7 +103,7 @@ export class Sequencer {
 
   private tick() {
     const now = this.transport.beatNow();
-    const step = now >= this.last ? now - this.last : SONG_BEATS - this.last + now;
+    const step = now >= this.last ? now - this.last : this.transport.loopBeats() - this.last + now;
     if (step > 4) {
       // A seek or a stall: skip ahead rather than fire a burst of notes.
       this.last = now;
@@ -122,7 +123,12 @@ export class Sequencer {
     for (const t of tracks) {
       if (t.type !== 'midi' || !t.instrument || !gear.has(t.instrument)) continue;
       if (t.mute || (solo && !t.solo)) continue;
-      for (const n of notesStarting(t.notes, this.last, now)) {
+      // A looping track plays its first bars again and again: work in its own loop's beats.
+      const loop = this.transport.trackLoop(t);
+      const from = this.last % loop;
+      const to = now % loop;
+      if (to < from) for (const n of t.notes) this.fresh.delete(n.id); // its loop came round
+      for (const n of notesStarting(t.notes, from, to, loop)) {
         if (this.fresh.has(n.id)) continue;
         this.engine.noteOn(n.note, t.instrument, true);
         this.offs.push({ at: this.elapsed + n.length, instrument: t.instrument, note: n.note });

@@ -1,0 +1,279 @@
+// CHOIR-16: a midnight-blue face with cream silkscreen and gold trim, cream knobs, a dark LCD
+// for the vowel chart and the tract view; the keys below. NOTE IN on the left edge, OUT on the
+// right (the floor draws the jacks; the labels sit beside them).
+:host {
+  --knob: 17px;
+  --cap-bg: #e9dfc4;
+  --cap-mark: #23263a;
+  --cap-ring: #9a8a5c;
+  --ink: #efe6cf;
+  --gold: #d9b45a;
+  --lcd-bg: #10131f;
+  --lcd-ink: #8fe3c0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 6px 26px 6px;
+  box-sizing: border-box;
+  color: var(--ink);
+  background: linear-gradient(180deg, #2b2f47, #23263a 60%, #1c1f30);
+  font: 6px/1 var(--font-pixel);
+}
+.lbl {
+  font: 5px/1.15 var(--font-pixel);
+  text-align: center;
+  white-space: nowrap;
+  color: var(--ink);
+}
+h3 {
+  margin: 0 0 4px;
+  padding-bottom: 2px;
+  font: 6px/1 var(--font-pixel);
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: var(--gold);
+  border-bottom: 1px solid #d9b45a66;
+}
+.ctl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  &.big {
+    --knob: 22px;
+  }
+}
+
+// ── Face ──
+.face {
+  display: flex;
+  gap: 0;
+  height: 70%;
+  box-sizing: border-box;
+}
+section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border-right: 1px solid #efe6cf26;
+  &:last-child {
+    border-right: none;
+  }
+}
+.grid2,
+.grid3 {
+  display: grid;
+  gap: 5px 6px;
+  justify-items: center;
+}
+.grid2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+.grid3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.row {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+}
+
+.voices {
+  width: 92px;
+  .mode {
+    color: var(--gold);
+  }
+}
+// One lamp per seat: lit while that singer sings.
+.lamps {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  margin-top: 2px;
+  i {
+    width: 5px;
+    height: 5px;
+    background: #15182a;
+    box-shadow: 0 0 0 1px #0a0b12;
+    &.seat {
+      background: #4b3e1c;
+    }
+    &.on {
+      background: #ffd36b;
+      box-shadow:
+        0 0 0 1px #0a0b12,
+        0 0 5px #ffd36b;
+    }
+  }
+}
+
+.singer {
+  width: 118px;
+}
+.body {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.head {
+  width: 48px;
+  height: 48px;
+  background: var(--lcd-bg);
+  box-shadow: 0 0 0 2px #0a0b12;
+  .skin {
+    fill: #e7b48f;
+  }
+  .hair {
+    fill: #5a3a22;
+  }
+  .eye {
+    fill: #1b1d2b;
+  }
+  .nose {
+    fill: #c98f6c;
+  }
+  .lip {
+    fill: #b5525a;
+  }
+  .mouth {
+    fill: #3a0f16;
+  }
+  .teeth {
+    fill: #f4efe2;
+  }
+  .tongue {
+    fill: #e0717c;
+  }
+}
+.vowel-name {
+  font: 10px/1 var(--font-pixel);
+  color: var(--lcd-ink);
+}
+
+.vowel {
+  width: 150px;
+}
+.chart {
+  position: relative;
+  width: 132px;
+  height: 92px;
+  margin: 2px 6px 0;
+  cursor: crosshair;
+  touch-action: none;
+  outline: none;
+  background: var(--lcd-bg);
+  box-shadow:
+    0 0 0 2px #0a0b12,
+    0 0 0 4px #3a3f5c;
+  svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .trap {
+    fill: #8fe3c00d;
+    stroke: #8fe3c066;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .grid-line {
+    stroke: #8fe3c033;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .anchor {
+    position: absolute;
+    translate: -50% -50%;
+    font: 7px/1 var(--font-pixel);
+    color: #8fe3c0aa;
+    pointer-events: none;
+  }
+  i {
+    position: absolute;
+    translate: -50% -50%;
+    pointer-events: none;
+  }
+  // The set vowel (hollow) and where the newest singer is right now (filled).
+  .set {
+    width: 9px;
+    height: 9px;
+    box-shadow: inset 0 0 0 2px var(--gold);
+  }
+  .dot {
+    width: 5px;
+    height: 5px;
+    background: #ffd36b;
+    box-shadow: 0 0 6px #ffd36b;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+}
+
+.voice {
+  width: 70px;
+}
+
+.stage {
+  flex: 1;
+  .tract {
+    width: 96px;
+    height: 30px;
+    padding: 2px;
+    background: var(--lcd-bg);
+    box-shadow: 0 0 0 2px #0a0b12;
+    rect {
+      fill: var(--lcd-ink);
+    }
+  }
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  font: 9px/1 var(--font-pixel);
+  letter-spacing: 0.1em;
+  color: var(--gold);
+}
+.kbd-mark {
+  padding: 2px 3px;
+  font: 5px/1 var(--font-pixel);
+  font-style: normal;
+  letter-spacing: 0;
+  color: #18181b;
+  background: var(--green);
+}
+
+// ── Keys ──
+.bed {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  padding: 6px 0 0;
+  kl-keyboard {
+    flex: 1;
+  }
+}
+
+// Beside the NOTE IN and OUT jacks the floor draws on the side edges.
+.jack-lbl {
+  position: absolute;
+  top: calc(16% + 9px);
+  font: 4px/1 var(--font-pixel);
+  color: var(--ink);
+  pointer-events: none;
+  &.in {
+    left: 2px;
+  }
+  &.out {
+    right: 6px;
+  }
+}

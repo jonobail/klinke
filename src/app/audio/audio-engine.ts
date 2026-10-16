@@ -1,15 +1,41 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { GEAR } from '../core/gear';
-import { type Patch } from '../core/patch';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { GEAR, type GearKind, jackDef } from '../core/gear';
+import { type Cable, type Patch } from '../core/patch';
 import { BASE_MAX, BASE_MIN, noteName, parseMidi, shiftBase } from '../core/sound';
 import { PatchStore } from '../patch-store';
-import { type Unit, isPlayable } from './unit';
+import { Transport } from '../transport';
+import { type NoteEvent, type Unit, isPlayable } from './unit';
 import { createUnit } from './units';
 
 /** A note played by hand on a piece of gear: on (true) or off. */
 export type NoteListener = (gearId: string, note: number, on: boolean) => void;
 
 export type MidiStatus = 'off' | 'unsupported' | 'insecure' | 'denied' | 'ready';
+
+/**
+ * Gear you play notes into: the synths, and the note effects (CHORD-8, MOTION-15) that turn
+ * them into more notes on their NOTE OUT jacks.
+ */
+export const playsNotes = (kind: GearKind) =>
+  GEAR[kind].category === 'synth' || GEAR[kind].category === 'midi';
+
+/**
+ * A live NOTE cable: where its events go, and the voices it has started but not yet stopped,
+ * so unplugging it can stop them instead of leaving them hanging.
+ */
+interface NoteLine {
+  from: Unit;
+  fromJack: string;
+  to: Unit;
+  jack: string;
+  /** Sounding voice → its note. */
+  open: Map<number, number>;
+}
+
+const isNoteCable = (patch: Patch, c: Cable) => {
+  const kind = patch.gear.find((g) => g.id === c.from.gear)?.kind;
+  return !!kind && jackDef(kind, c.from.jack)?.signal === 'note';
+};
 
 /**
  * Turns the patch into sound. Each piece of gear gets a Web Audio unit; cables become node
@@ -19,6 +45,7 @@ export type MidiStatus = 'off' | 'unsupported' | 'insecure' | 'denied' | 'ready'
 @Injectable({ providedIn: 'root' })
 export class AudioEngine {
   private readonly store = inject(PatchStore);
+  private readonly transport = inject(Transport);
   private ctx?: AudioContext;
   private readonly units = new Map<string, Unit>();
   private readonly lastParams = new Map<string, Record<string, number>>();
@@ -57,7 +84,12 @@ export class AudioEngine {
     effect(() => {
       const id = this.store.selected();
       const gear = this.store.patch().gear.find((g) => g.id === id);
-      if (gear && GEAR[gear.kind].category === 'synth') this.lastSynth.set(gear.id);
+      if (gear && playsNotes(gear.kind)) this.lastSynth.set(gear.id);
+    });
+    // Every unit keeps the song tempo (arpeggios, tempo-synced movement).
+    effect(() => {
+      const bpm = this.transport.bpm();
+      for (const u of this.units.values()) u.setTempo(bpm);
     });
   }
 
@@ -144,11 +176,11 @@ export class AudioEngine {
   // ── Notes ─────────────────────────────────────────────
 
   /**
-   * The synth the computer keyboard and MIDI play: the selected synth, else the last one
-   * selected or played, else the first on the floor.
+   * The gear the computer keyboard and MIDI play (a synth or a note effect, see `playsNotes`):
+   * the selected one, else the last one selected or played, else the first on the floor.
    */
   readonly keyboardSynth = computed(() => {
-    const synths = this.store.patch().gear.filter((g) => GEAR[g.kind].category === 'synth');
+    const synths = this.store.patch().gear.filter((g) => playsNotes(g.kind));
     const pick = (id: string | null) => synths.find((g) => g.id === id)?.id;
     return pick(this.store.selected()) ?? pick(this.lastSynth()) ?? synths[0]?.id ?? null;
   });
@@ -201,6 +233,8 @@ export class AudioEngine {
 
   allNotesOff() {
     for (const u of this.units.values()) if (isPlayable(u)) u.allNotesOff();
+    // Anything a note effect still holds open down a NOTE cable stops too.
+    for (const line of this.noteLines.values()) this.release(line);
     this.sounding.clear();
     this.held.set({});
   }
@@ -244,6 +278,7 @@ export class AudioEngine {
     for (const [id, unit] of this.units) {
       if (ids.has(id)) continue;
       unit.dispose();
+      for (const jack of Object.keys(unit.noteOuts)) unit.noteOuts[jack] = undefined;
       this.units.delete(id);
       this.lastParams.delete(id);
       this.lastText.delete(id);
@@ -255,6 +290,7 @@ export class AudioEngine {
         unit = createUnit(g.kind, ctx);
         const id = g.id;
         unit.saveText = (key, value) => this.store.setText(id, key, value);
+        unit.setTempo(untracked(this.transport.bpm));
         this.units.set(g.id, unit);
         added = true;
       }
@@ -274,13 +310,70 @@ export class AudioEngine {
     this.wiring = wiring;
     for (const unit of this.units.values()) unit.unplugOutputs();
     for (const c of patch.cables) {
+      if (isNoteCable(patch, c)) continue;
       const from = this.units.get(c.from.gear)?.outputFor(c.from.jack);
       const to = this.units.get(c.to.gear)?.inputs[c.to.jack];
       if (from && to) from.connect(to);
     }
+    this.wireNotes(patch);
     // Re-patching unplugged everything leaving each OUT jack, recording taps included.
     for (const [node, source] of this.captures) this.sourceNode(source)?.connect(node);
     this.connectTrackBus();
+  }
+
+  // ── NOTE cables ───────────────────────────────────────
+
+  /** Live NOTE cables, keyed by their two jacks (so replugging the same pair keeps its voices). */
+  private readonly noteLines = new Map<string, NoteLine>();
+
+  /**
+   * Points every NOTE OUT jack at the unit its cable plugs into. Cables that are gone first stop
+   * the voices they left sounding downstream; jacks with no cable are cleared.
+   */
+  private wireNotes(patch: Patch) {
+    const lines = new Map<string, NoteLine>();
+    for (const c of patch.cables) {
+      if (!isNoteCable(patch, c)) continue;
+      const from = this.units.get(c.from.gear);
+      const to = this.units.get(c.to.gear);
+      if (!from || !to) continue;
+      const key = `${c.from.gear}.${c.from.jack}>${c.to.gear}.${c.to.jack}`;
+      const old = this.noteLines.get(key);
+      lines.set(
+        key,
+        old?.from === from && old.to === to
+          ? old
+          : { from, fromJack: c.from.jack, to, jack: c.to.jack, open: new Map() },
+      );
+    }
+    const live = new Set(this.units.values());
+    for (const [key, line] of this.noteLines) {
+      if (lines.get(key) === line) continue;
+      // Gear that was removed has been disposed: it has nothing left to stop.
+      if (live.has(line.to)) this.release(line);
+    }
+    this.noteLines.clear();
+    for (const unit of this.units.values()) {
+      for (const jack of Object.keys(unit.noteOuts)) unit.noteOuts[jack] = undefined;
+    }
+    for (const [key, line] of lines) {
+      this.noteLines.set(key, line);
+      line.from.noteOuts[line.fromJack] = (e) => this.send(line, e);
+    }
+  }
+
+  /** Passes one event down a NOTE cable, keeping track of the voices it leaves sounding. */
+  private send(line: NoteLine, e: NoteEvent) {
+    if (e.type === 'on') line.open.set(e.voice, e.note);
+    else if (e.type === 'off') line.open.delete(e.voice);
+    line.to.receive?.(line.jack, e);
+  }
+
+  /** Stops every voice a NOTE cable still has sounding. */
+  private release(line: NoteLine) {
+    const open = [...line.open];
+    line.open.clear();
+    for (const [voice, note] of open) line.to.receive?.(line.jack, { type: 'off', voice, note });
   }
 
   // ── Recording taps and take playback ──────────────────

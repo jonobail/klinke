@@ -47,7 +47,7 @@
 
       <svg class="cables" [attr.width]="size().w" [attr.height]="size().h" aria-hidden="true">
         @for (c of cables(); track c.id) {
-          <g class="cable" (click)="store.unplug(c.id)">
+          <g class="cable" [class.note]="c.note" (click)="store.unplug(c.id)">
             <title>click to unplug</title>
             <path class="hit" [attr.d]="c.d" />
             <path class="shade" [attr.d]="c.d" />
@@ -55,7 +55,7 @@
           </g>
         }
         @if (pendingPath(); as d) {
-          <g class="cable pending">
+          <g class="cable pending" [class.note]="pendingNote()">
             <path class="shade" [attr.d]="d" />
             <path class="wire" [attr.d]="d" />
           </g>
@@ -67,6 +67,8 @@
           type="button"
           class="jack"
           [class.in]="j.dir === 'in'"
+          [class.note]="j.note"
+          [class.dim]="j.dim"
           [class.plugged]="j.plugged"
           [class.pending]="j.pending"
           [style.left.px]="j.x"

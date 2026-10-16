@@ -96,3 +96,19 @@ test('stored notes are validated', () => {
   );
   assert.deepEqual(parseNotes('nope'), []);
 });
+
+test('on a looping track, notes record at their place in the loop and past-the-end notes rest', () => {
+  // Bar 6 beat 1 on a 1-bar (4-beat) track loop is beat 0 of the loop.
+  assert.equal(recordedNote('a', 60, 20, 20.5, '1/16', 100, 4).start, 0);
+  // Held across the loop point: lasts to the end of the loop.
+  assert.equal(recordedNote('b', 60, 3.5, 4.5, '1/16', 100, 4).length, 0.5);
+  const notes = [n('in', 1, 60, 1), n('out', 5, 60, 1)];
+  assert.deepEqual(
+    notesStarting(notes, 0, 8, 4).map((x) => x.id),
+    ['in'],
+  );
+  assert.deepEqual(
+    notesStarting(notes, 3, 0.5, 4).map((x) => x.id),
+    [],
+  ); // wrapped, 'out' skipped
+});

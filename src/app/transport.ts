@@ -1,6 +1,14 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DEFAULT_GRID, type Grid, GRIDS, type Note, parseNotes } from './core/notes';
-import { SONG_BEATS, beatsAfter, clampBpm, formatPosition } from './core/transport';
+import {
+  BEATS_PER_BAR,
+  SONG_BARS,
+  beatsAfter,
+  clampBpm,
+  clampLoop,
+  formatPosition,
+  trackLoopBeats,
+} from './core/transport';
 import { PatchStore } from './patch-store';
 
 /** A recorded stretch of audio on an audio track; the sound itself is kept in IndexedDB. */
@@ -31,6 +39,8 @@ export interface Track {
   solo: boolean;
   /** Recorded audio on audio tracks. */
   takes: Take[];
+  /** Bars this track repeats over (its first N bars, again and again); 0 = no loop of its own. */
+  loop: number;
 }
 
 const SONG_KEY = 'klinke.song.v1';
@@ -47,6 +57,7 @@ const track = (id: string, name: string, over: Partial<Track> = {}): Track => ({
   mute: false,
   solo: false,
   takes: [],
+  loop: 0,
   ...over,
 });
 
@@ -56,6 +67,9 @@ export class Transport {
   private readonly store = inject(PatchStore);
 
   readonly bpm = signal(120);
+  /** The song plays round its first N bars. */
+  readonly loopBars = signal(SONG_BARS);
+  readonly loopBeats = computed(() => this.loopBars() * BEATS_PER_BAR);
   readonly playing = signal(false);
   readonly recording = signal(false);
   /** Song position in beats (updated every frame while playing). */
@@ -95,7 +109,12 @@ export class Transport {
   /** The exact song position right now (the `beats` signal only updates once a frame). */
   beatNow(): number {
     if (!this.playing()) return this.beats();
-    return beatsAfter(this.startBeat, (performance.now() - this.startTime) / 1000, this.bpm());
+    return beatsAfter(
+      this.startBeat,
+      (performance.now() - this.startTime) / 1000,
+      this.bpm(),
+      this.loopBeats(),
+    );
   }
 
   play() {
@@ -127,7 +146,7 @@ export class Transport {
   }
 
   seek(beats: number) {
-    const b = Math.max(0, Math.min(SONG_BEATS - 1e-6, beats));
+    const b = Math.max(0, Math.min(this.loopBeats() - 1e-6, beats));
     this.beats.set(b);
     this.startBeat = b;
     this.startTime = performance.now();
@@ -143,6 +162,22 @@ export class Transport {
     if (!this.tracks().some((t) => t.arm)) return;
     this.recording.set(true);
     this.play();
+  }
+
+  /** Sets the song loop; a playhead past the new end comes round to its place in the loop. */
+  setLoop(bars: number) {
+    const was = this.beatNow();
+    this.loopBars.set(clampLoop(bars, false));
+    if (was >= this.loopBeats()) this.seek(was % this.loopBeats());
+    else if (this.playing()) {
+      this.startBeat = was;
+      this.startTime = performance.now();
+    }
+  }
+
+  /** How many beats a track repeats over (its own loop, or the song's). */
+  trackLoop(t: Pick<Track, 'loop'>): number {
+    return trackLoopBeats(t.loop, this.loopBeats());
   }
 
   setBpm(bpm: number) {
@@ -181,7 +216,7 @@ export class Transport {
 
   /** Saves the song (recorded takes save themselves straight away: audio is costly to lose). */
   save() {
-    const song = { bpm: this.bpm(), tracks: this.tracks() };
+    const song = { bpm: this.bpm(), loopBars: this.loopBars(), tracks: this.tracks() };
     try {
       localStorage.setItem(SONG_KEY, JSON.stringify(song));
     } catch {
@@ -194,6 +229,7 @@ export class Transport {
       const raw = JSON.parse(localStorage.getItem(SONG_KEY) ?? 'null');
       if (!raw || !Array.isArray(raw.tracks)) return;
       if (Number.isFinite(raw.bpm)) this.bpm.set(clampBpm(raw.bpm));
+      if (raw.loopBars !== undefined) this.loopBars.set(clampLoop(raw.loopBars, false));
       const tracks = raw.tracks
         .filter((t: Partial<Track>) => t && typeof t.id === 'string' && typeof t.name === 'string')
         .map((t: Partial<Track>) =>
@@ -207,6 +243,7 @@ export class Transport {
             mute: !!t.mute,
             solo: !!t.solo,
             takes: parseTakes(t.takes),
+            loop: clampLoop(t.loop ?? 0, true),
           }),
         );
       if (tracks.length) this.tracks.set(tracks);
@@ -219,7 +256,12 @@ export class Transport {
 
   private tick = (now: number) => {
     const prev = this.beats();
-    const next = beatsAfter(this.startBeat, (now - this.startTime) / 1000, this.bpm());
+    const next = beatsAfter(
+      this.startBeat,
+      (now - this.startTime) / 1000,
+      this.bpm(),
+      this.loopBeats(),
+    );
     this.beats.set(next);
     if (next < prev) this.epoch.update((n) => n + 1); // round the loop
     this.frame = requestAnimationFrame(this.tick);

@@ -68,6 +68,9 @@
           (dblclick)="remove(n)"
         ></div>
       }
+      @if (loopEnd() * BEAT < width) {
+        <i class="beyond" [style.left.px]="loopEnd() * BEAT"></i>
+      }
       <i class="ph" [style.left.px]="playhead()"></i>
     </div>
   </div>

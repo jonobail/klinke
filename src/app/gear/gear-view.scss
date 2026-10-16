@@ -540,12 +540,27 @@
   color: #a9a9a2;
 }
 
+// ── PS-3100 ─────────────────────────────────────────────
+// Its panel is its own component (ps3100-panel), wood case included.
+:host(.ps3100) {
+  padding: 0;
+  background: #4a2112;
+  border: 3px solid #1d0c05;
+}
+
 // ── SH-101 ──────────────────────────────────────────────
 // Its panel is its own component (sh101-panel); the host is just the charcoal case.
 :host(.sh101) {
   padding: 0;
   background: #45474a;
   border: 3px solid #1e1f21;
+}
+
+// The voice chain draws its own faces.
+:host(.chords) {
+  padding: 0;
+  background: #23264a;
+  border: 3px solid #0d0e12;
 }
 .act-btn {
   width: 16px;

@@ -46,7 +46,7 @@ export interface Patch {
   nextId: number;
 }
 
-export type PatchError = 'same-gear' | 'direction' | 'cycle' | 'unknown-jack';
+export type PatchError = 'same-gear' | 'direction' | 'signal' | 'cycle' | 'unknown-jack';
 
 export const emptyPatch = (): Patch => {
   const out = GEAR.output;
@@ -197,6 +197,13 @@ export function jackDirection(patch: Patch, ref: JackRef): 'in' | 'out' | undefi
   return gear && jackDef(gear.kind, ref.jack)?.dir;
 }
 
+/** What a jack carries: 'note' events or (the default) 'audio'. */
+export function jackSignal(patch: Patch, ref: JackRef): 'audio' | 'note' | undefined {
+  const gear = patch.gear.find((g) => g.id === ref.gear);
+  const def = gear && jackDef(gear.kind, ref.jack);
+  return def && (def.signal ?? 'audio');
+}
+
 /** Is this jack an effects-loop return into a delay line (see `JackDef.returns`)? */
 function isReturn(patch: Patch, ref: JackRef): boolean {
   const gear = patch.gear.find((g) => g.id === ref.gear);
@@ -223,7 +230,9 @@ function reaches(patch: Patch, a: string, b: string): boolean {
 
 /**
  * Patches a cable between two jacks, in either click order. Each jack holds one cable, so
- * plugging into an occupied jack pulls the old cable out. Feedback loops are refused.
+ * plugging into an occupied jack pulls the old cable out. Feedback loops are refused, and so are
+ * cables between an audio jack and a NOTE jack. Note and audio cables share one reachability
+ * graph: a loop is a loop whatever its cables carry.
  */
 export function connect(
   patch: Patch,
@@ -235,6 +244,7 @@ export function connect(
   if (!da || !db) return { patch, error: 'unknown-jack' };
   if (a.gear === b.gear) return { patch, error: 'same-gear' };
   if (da === db) return { patch, error: 'direction' };
+  if (jackSignal(patch, a) !== jackSignal(patch, b)) return { patch, error: 'signal' };
   const [from, to] = da === 'out' ? [a, b] : [b, a];
   const kept = patch.cables.filter((c) => !sameJack(c.from, from) && !sameJack(c.to, to));
   // A loop through an effects-loop return is fine: it goes round a delay line.

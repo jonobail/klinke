@@ -1,0 +1,178 @@
+<ng-template #k let-id let-label="label" let-size="size">
+  <span class="ctl {{ size ?? '' }}">
+    <kl-knob
+      [value]="value(id)"
+      [label]="param(id).label"
+      [steps]="param(id).steps ?? 0"
+      [valueText]="valueText(id)"
+      (changed)="set(id, $event)"
+    />
+    <span class="lbl">{{ label ?? param(id).label }}</span>
+  </span>
+</ng-template>
+
+<div class="face">
+  <section class="voices">
+    <h3>VOICES</h3>
+    <div class="grid2">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'mode', size: 'big' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'singers', size: 'big' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'style' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'legato' }" />
+    </div>
+    <div class="lamps" aria-hidden="true">
+      @for (i of seats; track i) {
+        <i [class]="lamp(i)"></i>
+      }
+    </div>
+    <span class="lbl mode">{{ valueText('mode') }} · {{ valueText('style') }}</span>
+  </section>
+
+  <section class="singer">
+    <h3>SINGER</h3>
+    <div class="body">
+      <svg
+        class="head"
+        viewBox="0 0 20 20"
+        shape-rendering="crispEdges"
+        role="img"
+        [attr.aria-label]="'Singing ' + vowelName()"
+      >
+        <!-- head, hair, eyes, brows -->
+        <rect x="4" y="2" width="12" height="16" class="skin" />
+        <rect x="3" y="4" width="14" height="12" class="skin" />
+        <rect x="4" y="1" width="12" height="3" class="hair" />
+        <rect x="3" y="3" width="2" height="4" class="hair" />
+        <rect x="15" y="3" width="2" height="4" class="hair" />
+        <rect x="6" y="7" width="2" height="2" class="eye" />
+        <rect x="12" y="7" width="2" height="2" class="eye" />
+        <rect x="9" y="9" width="2" height="2" class="nose" />
+        <!-- mouth: spread by the lips, opened by the jaw -->
+        <rect
+          [attr.x]="mouth().x - 1"
+          [attr.y]="mouth().y - 1"
+          [attr.width]="mouth().w + 2"
+          [attr.height]="mouth().h + 2"
+          class="lip"
+        />
+        <rect
+          [attr.x]="mouth().x"
+          [attr.y]="mouth().y"
+          [attr.width]="mouth().w"
+          [attr.height]="mouth().h"
+          class="mouth"
+        />
+        @if (mouth().teeth) {
+          <rect
+            [attr.x]="mouth().x"
+            [attr.y]="mouth().y"
+            [attr.width]="mouth().w"
+            height="1"
+            class="teeth"
+          />
+        }
+        @if (mouth().tongue) {
+          <rect
+            [attr.x]="mouth().x + 1"
+            [attr.y]="mouth().y + mouth().h - mouth().tongue"
+            [attr.width]="Math.max(1, mouth().w - 2)"
+            [attr.height]="mouth().tongue"
+            class="tongue"
+          />
+        }
+      </svg>
+      <span class="vowel-name">/{{ vowelName() }}/</span>
+    </div>
+    <div class="grid3">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'type' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'age' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'neck' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'jaw' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'lips' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'nose' }" />
+    </div>
+  </section>
+
+  <section class="vowel">
+    <h3>VOWEL</h3>
+    <div
+      class="chart"
+      role="slider"
+      tabindex="0"
+      aria-label="Vowel chart: left front, right back, top close, bottom open"
+      [attr.aria-valuetext]="'/' + vowelName() + '/'"
+      title="Click or drag to choose the vowel"
+      (pointerdown)="chartDown($event)"
+      (keydown)="chartKey($event)"
+    >
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <polygon points="0,0 100,0 100,100 30,100" class="trap" />
+        <line x1="10" y1="33" x2="100" y2="33" class="grid-line" />
+        <line x1="20" y1="66" x2="100" y2="66" class="grid-line" />
+        <line x1="55" y1="0" x2="65" y2="100" class="grid-line" />
+      </svg>
+      @for (v of VOWELS; track v.symbol) {
+        <span class="anchor" [style.left.%]="v.x * 100" [style.top.%]="v.y * 100">{{
+          v.symbol
+        }}</span>
+      }
+      <i
+        class="set"
+        [style.left.%]="value('vowelX') * 100"
+        [style.top.%]="value('vowelY') * 100"
+      ></i>
+      <i class="dot" [style.left.%]="vowel().x * 100" [style.top.%]="vowel().y * 100"></i>
+    </div>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'motion', label: 'MOTION' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'motionRate' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'motionDepth' }" />
+    </div>
+  </section>
+
+  <section class="voice">
+    <h3>VOICE</h3>
+    <div class="grid2">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'breath' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'rasp' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'vibrato' }" />
+      <span></span>
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'attack' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'release' }" />
+    </div>
+  </section>
+
+  <section class="stage">
+    <h3>STAGE</h3>
+    <div class="grid2">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'room' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'width' }" />
+    </div>
+    <ng-container *ngTemplateOutlet="k; context: { $implicit: 'volume', size: 'big' }" />
+    <svg
+      class="tract"
+      viewBox="0 0 96 30"
+      shape-rendering="crispEdges"
+      role="img"
+      aria-label="Vocal tract shape"
+    >
+      @for (b of tract(); track $index) {
+        <rect [attr.x]="b.x" [attr.y]="15 - b.h / 2" width="3" [attr.height]="b.h" />
+      }
+    </svg>
+    <span class="lbl">GLOTTIS ▸ LIPS</span>
+    <span class="logo">
+      CHOIR-16
+      @if (hasKeyboard()) {
+        <i class="kbd-mark">⌨ KEYS</i>
+      }
+    </span>
+  </section>
+</div>
+
+<div class="bed">
+  <kl-keyboard [gearId]="gear().id" [layout]="keyboard()" [preview]="preview()" />
+</div>
+
+<span class="jack-lbl in" aria-hidden="true">NOTE IN</span>
+<span class="jack-lbl out" aria-hidden="true">OUT</span>

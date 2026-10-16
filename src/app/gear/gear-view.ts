@@ -6,14 +6,18 @@ import { AudioEngine } from '../audio/audio-engine';
 import { PatchStore } from '../patch-store';
 import { Transport } from '../transport';
 import { Fader, Knob, Rocker, Wheel } from './controls';
+import { ChoirPanel } from './choir-panel';
+import { ChordsPanel } from './chords-panel';
 import { Keyboard } from './keyboard';
+import { MotionPanel } from './motion-panel';
+import { Ps3100Panel } from './ps3100-panel';
 import { Sh101Panel } from './sh101-panel';
 import { Sp1200Panel } from './sp1200-panel';
 
 /** Draws one piece of gear at 1:1 floor scale. In preview mode (the inventory) it's inert. */
 @Component({
   selector: 'kl-gear-view',
-  imports: [NgTemplateOutlet, Knob, Fader, Rocker, Wheel, Sp1200Panel, Keyboard, Sh101Panel],
+  imports: [NgTemplateOutlet, Knob, Fader, Rocker, Wheel, Sp1200Panel, Keyboard, Sh101Panel, Ps3100Panel, ChordsPanel, MotionPanel, ChoirPanel],
   host: {
     '[class]': "'gear ' + gear().kind + ' ' + def().category",
     '[style.--face]': 'def().face?.panel',

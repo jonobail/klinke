@@ -79,6 +79,14 @@
   <kl-sp1200-panel [gear]="gear()" [preview]="preview()" />
 } @else if (gear().kind === 'sh101') {
   <kl-sh101-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'ps3100') {
+  <kl-ps3100-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'chords') {
+  <kl-chords-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'motion') {
+  <kl-motion-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'choir') {
+  <kl-choir-panel [gear]="gear()" [preview]="preview()" />
 } @else if (def().category === 'rack') {
   <div class="rack-face">
     <div class="rack-id">

@@ -155,3 +155,14 @@ header {
   background: var(--cream);
   pointer-events: none;
 }
+
+// Past the end of the track's (or the song's) loop: notes here don't play.
+.beyond {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(-45deg, #0c0d11b3 0 6px, #14151bb3 6px 12px);
+  border-left: 2px dashed var(--green);
+}

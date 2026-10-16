@@ -1,0 +1,291 @@
+<ng-template #k let-id let-label="label" let-size="size">
+  <span class="ctl {{ size ?? '' }}">
+    <kl-knob
+      [value]="value(id)"
+      [label]="param(id).label"
+      [steps]="param(id).steps ?? 0"
+      [valueText]="valueText(id)"
+      (changed)="set(id, $event)"
+    />
+    <span class="lbl">{{ label ?? param(id).label }}</span>
+  </span>
+</ng-template>
+
+<ng-template #sw let-id let-label="label" let-orange="orange">
+  <span class="ctl">
+    <button
+      type="button"
+      class="toggle"
+      [class.orange]="orange"
+      [class.on]="on(id)"
+      role="switch"
+      [attr.aria-checked]="on(id)"
+      [attr.aria-label]="param(id).label"
+      [title]="param(id).label + ': ' + valueText(id)"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="toggle(id)"
+    >
+      <i></i>
+    </button>
+    <span class="lbl">{{ label ?? param(id).label }}</span>
+  </span>
+</ng-template>
+
+<div class="face">
+  <!-- TEMPERAMENT ADJUST: one trimmer per note -->
+  <section class="temper">
+    <h3>TEMPERA-<br />MENT<br />ADJUST</h3>
+    @for (n of NOTE_NAMES; track n; let i = $index) {
+      <span class="trim">
+        <span class="note">{{ n }}</span>
+        <kl-knob
+          [value]="value('temper' + i)"
+          [label]="'Temperament ' + n"
+          [valueText]="temperText(i)"
+          (changed)="set('temper' + i, $event)"
+        />
+      </span>
+    }
+  </section>
+
+  <section class="col sig">
+    <h3>SIGNAL GENERATORS</h3>
+    <ng-container
+      *ngTemplateOutlet="k; context: { $implicit: 'wave', label: 'WAVE FORM', size: 'big' }"
+    />
+    <ng-container
+      *ngTemplateOutlet="
+        k;
+        context: { $implicit: 'pwmDepth', label: 'PULSE WIDTH MODULATION INTENSITY' }
+      "
+    />
+    <div class="pair">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'fine', label: 'FINE' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'coarse', label: 'COARSE' }" />
+    </div>
+    <span class="lbl mid">— FREQUENCY —</span>
+    <ng-container
+      *ngTemplateOutlet="k; context: { $implicit: 'scale', label: 'SCALE', size: 'big' }"
+    />
+    <div class="mod">
+      <span class="lbl head">FREQUENCY MODULATION</span>
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'fmMg1', label: 'MG 1 INTENSITY CONTROL' }"
+      />
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'fmSh', label: 'S/H INTENSITY CONTROL' }"
+      />
+    </div>
+  </section>
+
+  <section class="col">
+    <h3>DYNAMIC LP FILTERS</h3>
+    <ng-container
+      *ngTemplateOutlet="
+        k;
+        context: { $implicit: 'cutoff', label: 'CUTOFF FREQUENCY', size: 'big' }
+      "
+    />
+    <ng-container *ngTemplateOutlet="k; context: { $implicit: 'peak', label: 'PEAK' }" />
+    <ng-container
+      *ngTemplateOutlet="k; context: { $implicit: 'kbdBalance', label: 'KBD FILTER BALANCE' }"
+    />
+    <ng-container *ngTemplateOutlet="k; context: { $implicit: 'expand', label: 'EXPAND' }" />
+    <div class="mod">
+      <span class="lbl head">CUT OFF FREQUENCY MODULATION</span>
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'cutMg1', label: 'MG 1' }" />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'cutSh', label: 'S/H' }" />
+    </div>
+  </section>
+
+  <section class="col">
+    <h3>ENVELOPE MODIFIERS</h3>
+    <ng-container
+      *ngTemplateOutlet="k; context: { $implicit: 'attack', label: 'ATTACK TIME', size: 'big' }"
+    />
+    <ng-container *ngTemplateOutlet="k; context: { $implicit: 'decay', label: 'DECAY TIME' }" />
+    <ng-container
+      *ngTemplateOutlet="k; context: { $implicit: 'sustain', label: 'SUSTAIN LEVEL' }"
+    />
+    <div class="pair">
+      <ng-container *ngTemplateOutlet="sw; context: { $implicit: 'release', label: 'RELEASE' }" />
+      <ng-container *ngTemplateOutlet="sw; context: { $implicit: 'kbdHold', label: 'KBD HOLD' }" />
+    </div>
+  </section>
+
+  <section class="col res">
+    <h3>RESONATORS</h3>
+    <ng-container
+      *ngTemplateOutlet="
+        k;
+        context: { $implicit: 'resIntensity', label: 'RESONANCE INTENSITY', size: 'big' }
+      "
+    />
+    <div class="res-grid">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'res1', label: 'RESONATOR 1' }" />
+      <ng-container
+        *ngTemplateOutlet="sw; context: { $implicit: 'resMg2', label: 'PEAK FREQ MOD BY MG 2' }"
+      />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'res2', label: 'RESONATOR 2' }" />
+      <span></span>
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'res3', label: 'RESONATOR 3' }" />
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'resExt', label: 'EXT PEAK FREQ MOD' }"
+      />
+    </div>
+    <div class="sh">
+      <span class="lbl head">SAMPLE &amp; HOLD</span>
+      <div class="pair">
+        <ng-container
+          *ngTemplateOutlet="
+            k;
+            context: { $implicit: 'shRate', label: 'CLOCK FREQUENCY', size: 'big' }
+          "
+        />
+        <ng-container *ngTemplateOutlet="sw; context: { $implicit: 'shSync', label: 'SYNCHRO' }" />
+      </div>
+    </div>
+  </section>
+
+  <div class="right">
+    <!-- TOTAL SIGNAL MODIFIERS and the volumes -->
+    <div class="tsm">
+      <section class="tsm-flow">
+        <h3>TOTAL SIGNAL MODIFIERS</h3>
+        <div class="flow">
+          <ng-container
+            *ngTemplateOutlet="
+              k;
+              context: { $implicit: 'am', label: 'AMPLITUDE MODULATOR', size: 'big' }
+            "
+          />
+          <span class="box">ENSEMBLE</span>
+          <ng-container *ngTemplateOutlet="sw; context: { $implicit: 'ensemble', label: 'ON' }" />
+          <span class="amp">VCA 1</span>
+          <span class="amp">VCA 2</span>
+          <ng-container
+            *ngTemplateOutlet="
+              k;
+              context: { $implicit: 'kbdVolBalance', label: 'KEYBOARD VOLUME BALANCE', size: 'big' }
+            "
+          />
+          <ng-container
+            *ngTemplateOutlet="
+              k;
+              context: { $implicit: 'volume', label: 'FINAL VOLUME', size: 'big' }
+            "
+          />
+        </div>
+      </section>
+      <section class="vols">
+        <ng-container
+          *ngTemplateOutlet="k; context: { $implicit: 'phones', label: 'PHONE VOLUME' }"
+        />
+        <ng-container
+          *ngTemplateOutlet="k; context: { $implicit: 'direct', label: 'DIRECT VOLUME' }"
+        />
+      </section>
+      <section class="power">
+        <span class="lbl">POWER</span>
+        <i class="lamp" [class.lit]="engine.running()" aria-hidden="true"></i>
+        <span class="logo">POLYPHONIC SYNTHESIZER</span>
+        @if (hasKeyboard()) {
+          <i class="kbd-mark">⌨ KEYS</i>
+        }
+      </section>
+    </div>
+
+    <div class="lower">
+      <section class="mg">
+        <h3>MODULATION GENERATOR 1</h3>
+        <ng-container
+          *ngTemplateOutlet="k; context: { $implicit: 'mg1Wave', label: 'WAVE FORM', size: 'big' }"
+        />
+        <i class="blink" [style.animation-duration]="mg1Blink()" aria-hidden="true"></i>
+        <ng-container
+          *ngTemplateOutlet="k; context: { $implicit: 'mg1Rate', label: 'FREQUENCY' }"
+        />
+      </section>
+      <section class="mg">
+        <h3>MODULATION GENERATOR 2</h3>
+        <i class="blink" [style.animation-duration]="mg2Blink()" aria-hidden="true"></i>
+        <ng-container
+          *ngTemplateOutlet="k; context: { $implicit: 'mg2Rate', label: 'FREQUENCY ∿' }"
+        />
+      </section>
+      <section class="geg">
+        <h3>GENERAL ENVELOPE GENERATOR</h3>
+        <div class="geg-grid">
+          <ng-container
+            *ngTemplateOutlet="
+              k;
+              context: { $implicit: 'kbdTrigger', label: 'KBD TRIGGER SELECT', size: 'big' }
+            "
+          />
+          <ng-container *ngTemplateOutlet="k; context: { $implicit: 'gegDelay', label: 'DELAY' }" />
+          <ng-container
+            *ngTemplateOutlet="sw; context: { $implicit: 'gegVca', label: '→ VCA 2', orange: true }"
+          />
+          <ng-container
+            *ngTemplateOutlet="k; context: { $implicit: 'gegAttack', label: 'ATTACK' }"
+          />
+          <ng-container *ngTemplateOutlet="sw; context: { $implicit: 'gegAuto', label: 'AUTO' }" />
+          <ng-container
+            *ngTemplateOutlet="k; context: { $implicit: 'gegRelease', label: 'RELEASE' }"
+          />
+        </div>
+      </section>
+      <section class="vp">
+        <h3>VOLTAGE PROCESSORS</h3>
+        <span class="lbl sub">1 · GEG → CUTOFF</span>
+        <ng-container *ngTemplateOutlet="k; context: { $implicit: 'vp1a', label: 'LIMITER A' }" />
+        <ng-container *ngTemplateOutlet="k; context: { $implicit: 'vp1b', label: 'LIMITER B' }" />
+        <span class="lbl sub">2 · GEG → PITCH</span>
+        <ng-container *ngTemplateOutlet="k; context: { $implicit: 'vp2a', label: 'LIMITER A' }" />
+        <ng-container *ngTemplateOutlet="k; context: { $implicit: 'vp2b', label: 'LIMITER B' }" />
+      </section>
+      <section class="patch" aria-hidden="true">
+        <div class="patch-grid">
+          @for (row of PATCH_ROWS; track $index) {
+            @for (j of row; track $index) {
+              @if (j) {
+                <span class="pj" title="{{ j }} (patch-panel CV jack: not patchable here)">
+                  <i></i><span>{{ j }}</span>
+                </span>
+              } @else {
+                <span></span>
+              }
+            }
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- The keys in their rosewood bed, the pitch lever to the left -->
+<div class="bed">
+  <div class="lever-box">
+    <div
+      class="lever"
+      role="slider"
+      tabindex="0"
+      aria-label="Pitch lever (drag sideways to bend)"
+      aria-valuemin="-100"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="(bend() * 100).toFixed(0)"
+      title="Pitch lever: drag sideways to bend ±2 semitones"
+      (pointerdown)="leverDown($event)"
+      (keydown)="leverKey($event)"
+    >
+      <span class="stick" [style.left.%]="50 + bend() * 40"></span>
+    </div>
+  </div>
+  <kl-keyboard [gearId]="gear().id" [layout]="keyboard()" [preview]="preview()" />
+  <div class="cheek"></div>
+</div>
+
+<!-- Names for the real output jacks, beside where the floor draws them -->
+@for (j of outJacks(); track j.id) {
+  <span class="out-lbl" [style.top.%]="j.fy * 100">{{ j.label }}</span>
+}

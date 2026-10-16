@@ -21,7 +21,8 @@ export function encodeWav(channels: Float32Array[], sampleRate: number): ArrayBu
   const ch = channels.length;
   const bytes = new ArrayBuffer(44 + n * ch * 2);
   const v = new DataView(bytes);
-  const text = (at: number, s: string) => [...s].forEach((c, i) => v.setUint8(at + i, c.charCodeAt(0)));
+  const text = (at: number, s: string) =>
+    [...s].forEach((c, i) => v.setUint8(at + i, c.charCodeAt(0)));
   text(0, 'RIFF');
   v.setUint32(4, 36 + n * ch * 2, true);
   text(8, 'WAVE');
