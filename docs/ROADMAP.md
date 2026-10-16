@@ -1,6 +1,6 @@
 # KLINKE roadmap
 
-KLINKE is a pixel-art patchbay studio: drag gear onto the floor, patch it together with cables,
+KLINKE is a patch bay studio in the browser: drag gear onto the floor, patch it together with cables,
 and record what it plays onto a timeline. Design reference: the *KLINKE Pixel Patchbay Studio*
 mockup (synth → overdrive → reverb → delay → 4ch mixer → MAIN • REC, 16-bar timeline).
 
@@ -219,6 +219,22 @@ processors pre-patched, FINAL / PHONES / DIRECT outputs.
 - [x] Core maths and tests (`core/ps3100.ts`), unit (`audio/ps3100-unit.ts`), panel like the photo
 - [ ] Patchable CV jacks (needs control-voltage cables on the floor)
 - [ ] Phase-locked divider bank (one master oscillator for all keys) instead of per-voice oscillators
+## M2k Five more synths ✅
+
+Each after its service manual (documents from seriescircuits.com; pages cited in each device doc),
+each with NOTE IN / NOTE OUT.
+
+- [x] SH-2 (`docs/devices/sh2.md`): two VCOs + sub, low-note priority, envelope follower, AUDIO IN
+- [x] TB-303 (`docs/devices/tb303.md`): accent and slide circuits, 8 × 16-step patterns, transpose
+- [x] JUNO-60 (`docs/devices/juno60.md`): 6 voices, cyclic assignment, chorus I / II / I+II, arp
+- [x] JUPITER-8 (`docs/devices/jupiter8.md`): 8 voices in an AudioWorklet (sync, cross mod), 12 / 24
+      dB VCF, assign modes, arp
+- [x] JX-3P (`docs/devices/jx3p.md`): 6 voices in an AudioWorklet with the PG-200 controls, chorus,
+      128-step sequencer
+- [ ] JUPITER-8 DUAL / SPLIT key modes and patch memory
+- [ ] Factory presets for the JUNO-60 (PATCH 1–8 are KLINKE's own)
+- [ ] Listen-through on real hardware and tune levels by ear
+
 ## M2j Voice chain: CHORD-8 → MOTION-15 → CHOIR-16 ✅
 
 NOTE cables (blue, dashed, DIN-style jacks) carry notes with per-note bend, pressure and timbre

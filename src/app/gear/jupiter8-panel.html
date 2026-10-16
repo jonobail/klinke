@@ -1,0 +1,330 @@
+<ng-template #f let-id let-label="label">
+  <span class="ctl">
+    <kl-fader [value]="value(id)" [label]="param(id).label" (changed)="set(id, $event)" />
+    <span class="lbl">{{ label }}</span>
+  </span>
+</ng-template>
+
+<ng-template #k let-id let-label="label" let-size="size">
+  <span class="ctl {{ size ?? '' }}">
+    <kl-knob
+      [value]="value(id)"
+      [label]="param(id).label"
+      [steps]="param(id).steps ?? 0"
+      [valueText]="valueText(id)"
+      (changed)="set(id, $event)"
+    />
+    <span class="lbl">{{ label }}</span>
+  </span>
+</ng-template>
+
+<ng-template #s let-s let-label="label">
+  <span class="ctl">
+    <span class="sw" role="radiogroup" [attr.aria-label]="s.label">
+      <span class="slot" aria-hidden="true"></span>
+      <span class="pos">
+        @for (p of s.positions; track p.name) {
+          <button
+            type="button"
+            role="radio"
+            [class.on]="isOn(s.id, p.value)"
+            [attr.aria-checked]="isOn(s.id, p.value)"
+            [attr.aria-label]="s.label + ' ' + p.name"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="set(s.id, p.value)"
+          >
+            {{ p.name }}
+          </button>
+        }
+      </span>
+    </span>
+    @if (label) {
+      <span class="lbl">{{ label }}</span>
+    }
+  </span>
+</ng-template>
+
+<ng-template #btns let-list let-cap="cap">
+  <div class="group">
+    <div class="btns">
+      @for (b of list; track b.name) {
+        <button
+          type="button"
+          class="btn {{ b.colour }}"
+          [class.on]="b.id && isOn(b.id, b.value)"
+          [class.dead]="!b.id"
+          [disabled]="!b.id"
+          [title]="b.id ? b.name : b.name + ' (patch memory is not modelled)'"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="press(b)"
+        >
+          <i class="led"></i>
+        </button>
+      }
+    </div>
+    <div class="names">
+      @for (b of list; track b.name) {
+        <span>{{ b.name }}</span>
+      }
+    </div>
+    @if (cap) {
+      <span class="cap">{{ cap }}</span>
+    }
+  </div>
+</ng-template>
+
+<!-- The strip along the back: the name plate and the jacks -->
+<div class="back">
+  <span class="logo">JUPITER-8</span>
+  @if (hasKeyboard() && !preview()) {
+    <em class="kbd-mark" title="The computer keyboard and MIDI play this synth">⌨ KEYS</em>
+  }
+</div>
+
+<!-- Synthesis sections, left to right -->
+<div class="face">
+  <section class="master">
+    <h3>&nbsp;</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'volume', label: 'VOLUME' }" />
+      <div class="sub">
+        <span class="sub-title">ARPEGGIO</span>
+        <div class="row">
+          <ng-container *ngTemplateOutlet="f; context: { $implicit: 'arpRate', label: 'RATE' }" />
+          <ng-container *ngTemplateOutlet="s; context: { $implicit: arpClock, label: 'CLOCK' }" />
+        </div>
+      </div>
+    </div>
+  </section>
+  <section>
+    <h3>LFO <i class="lamp" [style.animation-duration]="lfoBlink()"></i></h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'lfoRate', label: 'RATE' }" />
+      <ng-container
+        *ngTemplateOutlet="f; context: { $implicit: 'lfoDelay', label: 'DELAY TIME' }"
+      />
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'lfoWave', label: 'WAVE FORM', size: 'big' }"
+      />
+    </div>
+  </section>
+  <section>
+    <h3>VCO MODULATOR</h3>
+    <div class="row">
+      <div class="sub">
+        <span class="sub-title">FREQ MOD</span>
+        <div class="row">
+          <ng-container *ngTemplateOutlet="f; context: { $implicit: 'modLfo', label: 'LFO MOD' }" />
+          <ng-container *ngTemplateOutlet="f; context: { $implicit: 'modEnv', label: 'ENV MOD' }" />
+          <ng-container *ngTemplateOutlet="s; context: { $implicit: modDest }" />
+        </div>
+      </div>
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'pwm', label: 'PW MOD' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: pwmSource }" />
+    </div>
+  </section>
+  <section>
+    <h3>VCO-1</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'crossMod', label: 'CROSS MOD' }" />
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'range1', label: 'RANGE', size: 'big' }"
+      />
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'wave1', label: 'WAVE FORM', size: 'big' }"
+      />
+    </div>
+  </section>
+  <section>
+    <h3>VCO-2</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: sync, label: 'SYNC' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: lowFreq, label: 'RANGE' }" />
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'range2', label: 'RANGE', size: 'big' }"
+      />
+      <ng-container *ngTemplateOutlet="k; context: { $implicit: 'fine2', label: 'FINE TUNE' }" />
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'wave2', label: 'WAVE FORM', size: 'big' }"
+      />
+    </div>
+  </section>
+  <section class="narrow">
+    <h3>VCO-1·2</h3>
+    <div class="row">
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'sourceMix', label: 'SOURCE MIX', size: 'big' }"
+      />
+    </div>
+  </section>
+  <section class="narrow">
+    <h3>HPF</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'hpf', label: 'CUTOFF' }" />
+    </div>
+  </section>
+  <section>
+    <h3>VCF</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'cutoff', label: 'CUTOFF' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'res', label: 'RES' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: slope, label: 'SLOPE' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'vcfEnv', label: 'ENV MOD' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: vcfEnvSel }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'vcfLfo', label: 'LFO MOD' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'keyFollow', label: 'KEY FLW' }" />
+    </div>
+  </section>
+  <section>
+    <h3>VCA</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'level', label: 'LEVEL' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: vcaLfo, label: 'LFO MOD' }" />
+    </div>
+  </section>
+  <section>
+    <h3>ENV-1</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env1A', label: 'A' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env1D', label: 'D' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env1S', label: 'S' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env1R', label: 'R' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: env1Kf, label: 'KEY FLW' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: env1Pol, label: 'POLARITY' }" />
+    </div>
+  </section>
+  <section>
+    <h3>ENV-2</h3>
+    <div class="row">
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env2A', label: 'A' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env2D', label: 'D' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env2S', label: 'S' }" />
+      <ng-container *ngTemplateOutlet="f; context: { $implicit: 'env2R', label: 'R' }" />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: env2Kf, label: 'KEY FLW' }" />
+    </div>
+  </section>
+</div>
+
+<!-- The button strip -->
+<div class="strip">
+  <div class="group tune">
+    <ng-container
+      *ngTemplateOutlet="k; context: { $implicit: 'tune', label: 'MASTER TUNE', size: 'big' }"
+    />
+  </div>
+  <ng-container *ngTemplateOutlet="btns; context: { $implicit: arpRange, cap: 'RANGE' }" />
+  <ng-container *ngTemplateOutlet="btns; context: { $implicit: arpMode, cap: 'ARPEGGIO MODE' }" />
+  <ng-container *ngTemplateOutlet="btns; context: { $implicit: assign, cap: 'ASSIGN MODE' }" />
+  <div class="group">
+    <div class="btns">
+      <button
+        type="button"
+        class="btn green"
+        [class.on]="value('hold') >= 0.5"
+        title="HOLD: keep the notes (and the arpeggio chord) sounding"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="toggle('hold')"
+      >
+        <i class="led"></i>
+      </button>
+    </div>
+    <div class="names"><span>HOLD</span></div>
+    <span class="cap">&nbsp;</span>
+  </div>
+  <div class="group">
+    <div class="btns">
+      <button type="button" class="btn blue dead" disabled title="DUAL (layers aren't modelled)">
+        <i class="led"></i>
+      </button>
+      <button type="button" class="btn blue dead" disabled title="SPLIT (layers aren't modelled)">
+        <i class="led"></i>
+      </button>
+      <button type="button" class="btn blue on" title="WHOLE: one patch over all 61 keys">
+        <i class="led"></i>
+      </button>
+    </div>
+    <div class="names"><span>DUAL</span><span>SPLIT</span><span>WHOLE</span></div>
+    <span class="cap">KEY MODE</span>
+  </div>
+  <div class="display" title="Arpeggio rate when it runs, else the assign mode">
+    <span class="digits">{{ display() }}</span>
+    <span class="cap">PATCH NUMBER</span>
+  </div>
+  <ng-container
+    *ngTemplateOutlet="btns; context: { $implicit: patchNumber, cap: 'PATCH NUMBER' }"
+  />
+  <div class="group">
+    <div class="btns">
+      <button type="button" class="btn green on" title="MANUAL: the panel as it's set">
+        <i class="led"></i>
+      </button>
+    </div>
+    <div class="names"><span>MANUAL</span></div>
+    <span class="cap">&nbsp;</span>
+  </div>
+  <ng-container
+    *ngTemplateOutlet="btns; context: { $implicit: patchPreset, cap: 'PATCH PRESET' }"
+  />
+  <ng-container *ngTemplateOutlet="btns; context: { $implicit: tape, cap: 'TAPE MEMORY' }" />
+</div>
+
+<!-- Bender panel and the keys -->
+<div class="bottom">
+  <div class="bender-panel">
+    <div class="bp-row">
+      @for (b of benders; track b.id) {
+        <ng-container
+          *ngTemplateOutlet="s; context: { $implicit: b, label: b.label.replace('BEND ', '') }"
+        />
+      }
+      <ng-container
+        *ngTemplateOutlet="k; context: { $implicit: 'portaTime', label: 'PORTAMENTO' }"
+      />
+      <ng-container *ngTemplateOutlet="s; context: { $implicit: porta }" />
+    </div>
+    <div class="bp-row">
+      <div class="sub">
+        <div class="row">
+          <ng-container *ngTemplateOutlet="f; context: { $implicit: 'bendVco', label: 'VCO' }" />
+          <ng-container *ngTemplateOutlet="f; context: { $implicit: 'bendVcf', label: 'VCF' }" />
+        </div>
+        <span class="sub-title under">BEND</span>
+      </div>
+      <div class="sub">
+        <div class="row">
+          <ng-container *ngTemplateOutlet="f; context: { $implicit: 'lfoModVco', label: 'VCO' }" />
+          <ng-container *ngTemplateOutlet="f; context: { $implicit: 'lfoModVcf', label: 'VCF' }" />
+        </div>
+        <span class="sub-title under">LFO MOD</span>
+      </div>
+      <div class="lever-col">
+        <button
+          type="button"
+          class="lfo-mod"
+          title="LFO MODULATION: hold for vibrato / wah at the LFO MOD depths"
+          (pointerdown)="lfoMod(true, $event)"
+          (pointerup)="lfoMod(false, $event)"
+          (pointercancel)="lfoMod(false, $event)"
+        >
+          LFO MODULATION
+        </button>
+        <div
+          class="bender"
+          role="slider"
+          tabindex="0"
+          aria-label="Bender (drag sideways to bend, push up for LFO modulation)"
+          aria-valuemin="-100"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="(bend() * 100).toFixed(0)"
+          title="BENDER: drag sideways to bend, push up for LFO MODULATION"
+          (pointerdown)="benderDown($event)"
+          (keydown)="benderKey($event)"
+        >
+          <span class="lever" [style.left.%]="50 + bend() * 42"></span>
+        </div>
+        <span class="lbl">BENDER</span>
+      </div>
+    </div>
+  </div>
+  <kl-keyboard [gearId]="gear().id" [layout]="keyboard()" [preview]="preview()" />
+</div>

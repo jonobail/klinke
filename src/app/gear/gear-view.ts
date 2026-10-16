@@ -9,6 +9,11 @@ import { Fader, Knob, Rocker, Wheel } from './controls';
 import { ChoirPanel } from './choir-panel';
 import { ChordsPanel } from './chords-panel';
 import { Keyboard } from './keyboard';
+import { Tb303Panel } from './tb303-panel';
+import { Juno60Panel } from './juno60-panel';
+import { Jupiter8Panel } from './jupiter8-panel';
+import { Sh2Panel } from './sh2-panel';
+import { Jx3pPanel } from './jx3p-panel';
 import { MotionPanel } from './motion-panel';
 import { Ps3100Panel } from './ps3100-panel';
 import { Sh101Panel } from './sh101-panel';
@@ -17,7 +22,25 @@ import { Sp1200Panel } from './sp1200-panel';
 /** Draws one piece of gear at 1:1 floor scale. In preview mode (the inventory) it's inert. */
 @Component({
   selector: 'kl-gear-view',
-  imports: [NgTemplateOutlet, Knob, Fader, Rocker, Wheel, Sp1200Panel, Keyboard, Sh101Panel, Ps3100Panel, ChordsPanel, MotionPanel, ChoirPanel],
+  imports: [
+    NgTemplateOutlet,
+    Knob,
+    Fader,
+    Rocker,
+    Wheel,
+    Sp1200Panel,
+    Keyboard,
+    Sh101Panel,
+    Ps3100Panel,
+    ChordsPanel,
+    MotionPanel,
+    ChoirPanel,
+    Tb303Panel,
+    Juno60Panel,
+    Jupiter8Panel,
+    Sh2Panel,
+    Jx3pPanel,
+  ],
   host: {
     '[class]': "'gear ' + gear().kind + ' ' + def().category",
     '[style.--face]': 'def().face?.panel',

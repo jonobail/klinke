@@ -1,0 +1,312 @@
+// TB-303: a brushed silver case with black print, black knobs, and the dark switch board along
+// the front with its grey square keys and red LEDs.
+:host {
+  --knob: 26px;
+  --cap-bg: #1b1c1f;
+  --cap-ring: #8d8e8a;
+  --tb-face: #c9cac5;
+  --tb-ink: #1c1d20;
+  --tb-board: #26272b;
+  --tb-key: #a6a7a3;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  color: var(--tb-ink);
+  background:
+    repeating-linear-gradient(90deg, #ffffff10 0 1px, transparent 1px 3px), var(--tb-face);
+  font: 6px/1 var(--font-pixel);
+}
+.lbl {
+  font: 5px/1 var(--font-pixel);
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+button {
+  font: inherit;
+  color: inherit;
+  &:focus-visible {
+    outline: 1px solid var(--accent);
+  }
+}
+
+// ── Back edge ──
+.back {
+  display: flex;
+  justify-content: space-between;
+  height: 16px;
+  padding: 0 34px 0 8px;
+  align-items: center;
+  background: #9fa09b;
+  font: 5px/1 var(--font-pixel);
+  color: #3a3b3e;
+}
+
+// ── Knob row ──
+.top {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px 10px 6px;
+}
+.rot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.wave {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 4px;
+  button {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 3px;
+    border: none;
+    background: none;
+    font: 5px/1 var(--font-pixel);
+    cursor: pointer;
+    &.on {
+      color: #f2f2ee;
+      background: var(--tb-ink);
+    }
+  }
+  .glyph {
+    width: 8px;
+    height: 5px;
+    background: linear-gradient(
+      to top right,
+      transparent 48%,
+      currentColor 50% 62%,
+      transparent 64%
+    );
+    &.sq {
+      background: none;
+      box-shadow:
+        inset 0 1px 0 currentColor,
+        inset 1px 0 0 currentColor;
+    }
+  }
+}
+.brand {
+  margin-left: auto;
+  align-self: center;
+  font: italic 11px/1 var(--font-pixel);
+}
+
+// ── Tempo, pattern, logo, volume ──
+.mid {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px 6px;
+}
+.tempo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  .lcd {
+    min-width: 22px;
+    padding: 2px 3px;
+    text-align: center;
+    font: 7px/1 var(--font-pixel);
+    color: #ff5a64;
+    background: #1a0d0f;
+  }
+}
+.patt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.pbtns {
+  display: flex;
+  gap: 2px;
+  button {
+    width: 11px;
+    padding: 2px 0;
+    border: 1px solid var(--tb-ink);
+    background: none;
+    font: 5px/1 var(--font-pixel);
+    cursor: pointer;
+    &.on {
+      color: #f2f2ee;
+      background: var(--tb-ink);
+    }
+  }
+}
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-left: auto;
+  .model {
+    font: 13px/1 var(--font-pixel);
+  }
+  .sub {
+    font: italic 5px/1 var(--font-pixel);
+  }
+}
+.kbd-mark {
+  padding: 2px 3px;
+  font: 6px/1 var(--font-pixel);
+  font-style: normal;
+  color: #18181b;
+  background: var(--green);
+}
+.vol {
+  --knob: 26px;
+}
+
+// ── Step display ──
+.steps {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 2px;
+  margin: 0 10px 4px;
+  padding: 2px;
+  background: #15161a;
+}
+.cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 0;
+  border: none;
+  color: #e8e7e1;
+  background: #24252a;
+  cursor: pointer;
+  .led {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 3px;
+    height: 3px;
+  }
+  .n {
+    font: 4px/1 var(--font-pixel);
+    color: #8f908c;
+  }
+  .note {
+    font: 6px/1 var(--font-pixel);
+    &.rest {
+      color: #8f908c;
+    }
+  }
+  .marks {
+    display: flex;
+    gap: 2px;
+    b {
+      font: 4px/1 var(--font-pixel);
+      color: #3d3e43;
+      &.on {
+        color: #ffb347;
+      }
+    }
+  }
+  &.out {
+    opacity: 0.35;
+  }
+  &.cursor {
+    box-shadow: inset 0 0 0 1px #ffb347;
+  }
+  &.playing .led {
+    background: #ff4d5a;
+    box-shadow: 0 0 3px #ff4d5a;
+  }
+}
+
+// ── Switch board ──
+.board {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px 10px 8px;
+  color: #e8e7e1;
+  background: var(--tb-board);
+  min-height: 0;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+.keys {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 8px 2px;
+}
+.fns {
+  display: grid;
+  grid-template-columns: repeat(6, 30px);
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 8px 3px;
+}
+.tm {
+  grid-row: 1;
+  align-self: end;
+  padding-bottom: 3px;
+  text-align: center;
+  font: 5px/1 var(--font-pixel);
+  color: #6e6f6b;
+  &.lit {
+    color: #ffb347;
+  }
+}
+.key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  .cap {
+    display: block;
+    width: 17px;
+    height: 12px;
+    background: var(--tb-key);
+    box-shadow:
+      inset -1px -1px 0 #00000059,
+      inset 1px 1px 0 #ffffff59;
+  }
+  &.white .cap {
+    background: #e4e3dd;
+  }
+  &:active .cap {
+    background: #7c7d79;
+  }
+  &.big .cap {
+    width: 26px;
+    height: 19px;
+  }
+  .lbl {
+    font: 5px/1 var(--font-pixel);
+  }
+}
+.led {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4a1d22;
+  .on > & {
+    background: #ff4d5a;
+    box-shadow: 0 0 4px #ff4d5a;
+  }
+}

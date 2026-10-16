@@ -1,0 +1,326 @@
+<ng-template #knob let-id let-name="name">
+  <span class="rot">
+    <span class="lbl">{{ name }}</span>
+    <kl-knob
+      [value]="value(id)"
+      [label]="param(id).label"
+      [steps]="param(id).steps ?? 0"
+      [valueText]="param(id).steps ? optionText(id) : undefined"
+      (changed)="set(id, $event)"
+    />
+  </span>
+</ng-template>
+
+<ng-template #switch let-s let-name="name">
+  <span class="rot">
+    @if (name) {
+      <span class="lbl">{{ name }}</span>
+    }
+    <span class="sw" role="radiogroup" [attr.aria-label]="s.label">
+      <span class="slot" aria-hidden="true"></span>
+      <span class="pos">
+        @for (p of s.positions; track p.name) {
+          <button
+            type="button"
+            role="radio"
+            [class.on]="isOn(s, p.value)"
+            [attr.aria-checked]="isOn(s, p.value)"
+            [attr.aria-label]="s.label + ' ' + p.name"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="set(s.id, p.value)"
+          >
+            {{ p.name }}
+          </button>
+        }
+      </span>
+    </span>
+  </span>
+</ng-template>
+
+<!-- A membrane button with its LED -->
+<ng-template #btn let-name let-lit="lit" let-act="act" let-tip="tip">
+  <button
+    type="button"
+    class="mb"
+    [class.lit]="lit"
+    [title]="tip"
+    (pointerdown)="$event.stopPropagation()"
+    (click)="press(act)"
+  >
+    <i class="led"></i><span>{{ name }}</span>
+  </button>
+</ng-template>
+
+<!-- The rear jack strip -->
+<div class="jacks" aria-hidden="true">
+  <span>HOLD PEDAL · SEQ TRIG · MIDI IN · MIDI OUT · PROGRAMMER</span>
+</div>
+
+<!-- PG-200 -->
+<div class="pg">
+  <section>
+    <h3>DCO-1</h3>
+    <div class="grid c2">
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'dco1Range', name: 'RANGE' }" />
+      <ng-container
+        *ngTemplateOutlet="knob; context: { $implicit: 'dco1Wave', name: 'WAVEFORM' }"
+      />
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: lfo1, name: 'LFO' }" />
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: env1, name: 'ENV' }" />
+    </div>
+  </section>
+  <section>
+    <h3>DCO-2</h3>
+    <div class="grid c3">
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'dco2Range', name: 'RANGE' }" />
+      <ng-container
+        *ngTemplateOutlet="knob; context: { $implicit: 'dco2Wave', name: 'WAVEFORM' }"
+      />
+      <span class="rot">
+        <span class="lbl">TUNE</span>
+        <kl-knob
+          [value]="value('dco2Tune')"
+          label="DCO-2 TUNE"
+          [steps]="25"
+          [valueText]="tuneText()"
+          (changed)="set('dco2Tune', $event)"
+        />
+      </span>
+      <ng-container
+        *ngTemplateOutlet="knob; context: { $implicit: 'crossMod', name: 'CROSS MOD' }"
+      />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'dco2Fine', name: 'FINE' }" />
+      <span class="pair">
+        <ng-container *ngTemplateOutlet="switch; context: { $implicit: lfo2, name: 'LFO' }" />
+        <ng-container *ngTemplateOutlet="switch; context: { $implicit: env2, name: 'ENV' }" />
+      </span>
+    </div>
+  </section>
+  <section>
+    <h3>FREQ MOD</h3>
+    <div class="grid c2">
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'lfoDepth', name: 'LFO' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'envDepth', name: 'ENV' }" />
+      <span></span>
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: envPol }" />
+    </div>
+  </section>
+  <section>
+    <h3>VCF</h3>
+    <div class="grid c4">
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'mix', name: 'SOURCE MIX' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'hpf', name: 'HPF' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'cutoff', name: 'CUTOFF' }" />
+      <ng-container
+        *ngTemplateOutlet="knob; context: { $implicit: 'resonance', name: 'RESONANCE' }"
+      />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'vcfLfo', name: 'LFO MOD' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'vcfEnv', name: 'ENV MOD' }" />
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: vcfPol }" />
+      <ng-container
+        *ngTemplateOutlet="knob; context: { $implicit: 'pitchFollow', name: 'PITCH FOLLOW' }"
+      />
+    </div>
+  </section>
+  <section>
+    <h3>VCA</h3>
+    <div class="grid c1">
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: vcaMode, name: 'MODE' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'vcaLevel', name: 'LEVEL' }" />
+    </div>
+  </section>
+  <section>
+    <h3>LFO</h3>
+    <div class="grid c1">
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'lfoWave', name: 'WAVEFORM' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'lfoRate', name: 'RATE' }" />
+    </div>
+    <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'lfoDelay', name: 'DELAY' }" />
+  </section>
+  <section>
+    <h3>ENVELOPE</h3>
+    <div class="grid c2">
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'attack', name: 'ATTACK' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'decay', name: 'DECAY' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'sustain', name: 'SUSTAIN' }" />
+      <ng-container *ngTemplateOutlet="knob; context: { $implicit: 'release', name: 'RELEASE' }" />
+    </div>
+  </section>
+  <section>
+    <h3>CHORUS</h3>
+    <div class="grid c1">
+      <ng-container *ngTemplateOutlet="switch; context: { $implicit: chorusSw }" />
+    </div>
+    <span class="pg-logo">PG<br />200</span>
+  </section>
+</div>
+
+<!-- The JX-3P's face -->
+<div class="face">
+  <div class="logo">
+    <span class="model">JX-3P</span>
+    <span class="sub">PROGRAMMABLE PRESET<br />POLYPHONIC SYNTHESIZER</span>
+  </div>
+  <div class="group">
+    <div class="btns">
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: {
+            $implicit: 'LFO TRIG',
+            lit: false,
+            act: 'lfoTrig',
+            tip: 'LFO TRIG: start the LFO delay again',
+          }
+        "
+      />
+    </div>
+  </div>
+  <span class="rot fd">
+    <kl-fader
+      [value]="value('brilliance')"
+      label="BRILLIANCE"
+      (changed)="set('brilliance', $event)"
+    />
+    <span class="lbl">BRILLIANCE</span>
+  </span>
+  <span class="rot">
+    <kl-knob
+      class="big"
+      [value]="value('volume')"
+      label="VOLUME"
+      (changed)="set('volume', $event)"
+    />
+    <span class="lbl">VOLUME</span>
+  </span>
+  <div class="group">
+    <div class="btns">
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: { $implicit: 'CHORUS', lit: on('chorus'), act: 'chorus', tip: 'CHORUS on / off' }
+        "
+      />
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: {
+            $implicit: 'MUTE',
+            lit: on('mute'),
+            act: 'mute',
+            tip: 'MUTE: silence the voices',
+          }
+        "
+      />
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: {
+            $implicit: 'HOLD',
+            lit: on('hold'),
+            act: 'hold',
+            tip: 'HOLD: keys keep sounding after release',
+          }
+        "
+      />
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: {
+            $implicit: 'KEY TRANS',
+            lit: on('keyTranspose'),
+            act: 'keyTranspose',
+            tip: 'KEY TRANSPOSE: while the sequence plays, a key transposes it from C4',
+          }
+        "
+      />
+    </div>
+  </div>
+  <div class="group seq">
+    <div class="btns">
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: {
+            $implicit: 'WRITE',
+            lit: on('seqWrite'),
+            act: 'write',
+            tip: 'Sequencer WRITE: key in notes or chords, one step each',
+          }
+        "
+      />
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: {
+            $implicit: 'TIE',
+            lit: false,
+            act: 'tie',
+            tip: 'TIE: hold the last step one step longer',
+          }
+        "
+      />
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: { $implicit: 'REST', lit: false, act: 'rest', tip: 'REST: a silent step' }
+        "
+      />
+      <span class="rot rate">
+        <kl-knob
+          [value]="value('seqRate')"
+          label="SEQUENCER RATE"
+          [steps]="4"
+          [valueText]="optionText('seqRate')"
+          (changed)="set('seqRate', $event)"
+        />
+        <span class="lbl">RATE {{ optionText('seqRate') }}</span>
+      </span>
+      <ng-container
+        *ngTemplateOutlet="
+          btn;
+          context: {
+            $implicit: 'START/STOP',
+            lit: on('seqPlay'),
+            act: 'start',
+            tip: 'Sequencer START / STOP (at the song tempo)',
+          }
+        "
+      />
+      <span class="count" title="Steps stored / playing">
+        {{ status().at >= 0 ? status().at + 1 : '--' }}/{{ status().steps }}
+      </span>
+    </div>
+    <span class="cap">SEQUENCER · {{ SEQ_STEPS }} STEPS</span>
+  </div>
+  <div class="stripes" aria-hidden="true"><i></i><i></i><i></i></div>
+  @if (hasKeyboard() && !preview()) {
+    <em class="kbd-mark" title="The computer keyboard and MIDI play this synth">⌨ KEYS</em>
+  }
+  <span class="voices" title="Voices sounding">{{ status().voices }}/6</span>
+</div>
+
+<!-- Bender and keys -->
+<div class="bottom">
+  <div class="left">
+    <ng-container
+      *ngTemplateOutlet="switch; context: { $implicit: benderSw, name: 'BEND RANGE' }"
+    />
+    <div
+      class="bender"
+      role="slider"
+      tabindex="0"
+      aria-label="Pitch bender (drag sideways)"
+      aria-valuemin="-100"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="(bend() * 100).toFixed(0)"
+      title="PITCH BENDER: drag sideways"
+      (pointerdown)="benderDown($event)"
+      (keydown)="benderKey($event)"
+    >
+      <span class="lever" [style.left.%]="50 + bend() * 42"></span>
+    </div>
+    <span class="lbl">PITCH BENDER</span>
+  </div>
+  <kl-keyboard [gearId]="gear().id" [layout]="keyboard()" [preview]="preview()" />
+</div>

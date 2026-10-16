@@ -557,6 +557,12 @@
 }
 
 // The voice chain draws its own faces.
+:host(.sh2),
+:host(.jx3p) {
+  padding: 0;
+  border: 3px solid #1e1f21;
+}
+
 :host(.chords) {
   padding: 0;
   background: #23264a;

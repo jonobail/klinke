@@ -20,6 +20,11 @@ import {
 import { CHOIR_GEAR } from './choir.ts';
 import { CHORDS_GEAR } from './chords.ts';
 import { MOTION_GEAR } from './motion.ts';
+import { TB303_GEAR } from './tb303.ts';
+import { JUNO60_GEAR } from './juno60.ts';
+import { JUPITER8_GEAR } from './jupiter8.ts';
+import { SH2_GEAR } from './sh2.ts';
+import { JX3P_GEAR } from './jx3p.ts';
 import { MG1_LABELS, NOTE_NAMES, SCALE_LABELS, WAVE_LABELS } from './ps3100.ts';
 import { KIT_CHANNELS, PADS, PREAMPS, SOUND_IDS } from './sp1200.ts';
 
@@ -423,6 +428,12 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
       }),
     ],
   },
+  // More synths, each in its own module with its logic.
+  tb303: TB303_GEAR,
+  juno60: JUNO60_GEAR,
+  jupiter8: JUPITER8_GEAR,
+  sh2: SH2_GEAR,
+  jx3p: JX3P_GEAR,
   // The voice chain: CHORD-8 → MOTION-15 → CHOIR-16 over NOTE cables. Each lives in its own
   // module with its logic.
   chords: CHORDS_GEAR,
@@ -467,6 +478,11 @@ export const INVENTORY: GearKind[] = [
   'modelD',
   'sh101',
   'ps3100',
+  'tb303',
+  'juno60',
+  'jupiter8',
+  'sh2',
+  'jx3p',
   'mixer',
   'sp1200',
   'chords',

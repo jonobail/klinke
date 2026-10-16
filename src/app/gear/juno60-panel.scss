@@ -1,0 +1,363 @@
+// JUNO-60: a long black panel with white silkscreen, section names boxed above their controls,
+// coloured slider caps, lever switches, orange / grey / yellow push buttons with red LEDs, the
+// red patch-number display, and walnut cheeks at either end.
+:host {
+  --knob: 18px;
+  --fader: 72px;
+  --cap-ring: #55565a;
+  --ju-face: #18181a;
+  --ju-ink: #ecebe6;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  color: var(--ju-ink);
+  background: var(--ju-face);
+  font: 6px/1 var(--font-pixel);
+}
+.lbl {
+  font: 5px/1.1 var(--font-pixel);
+  white-space: nowrap;
+  text-align: center;
+  color: var(--ju-ink);
+}
+
+// ── Rear strip ──
+.rear {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 236px 4px 16px;
+  background: #0c0c0d;
+  font: 5px/1 var(--font-pixel);
+  color: #8d8e8a;
+}
+
+.face {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.cheek {
+  width: 10px;
+  background: linear-gradient(90deg, #3d2213, #6b3d22 45%, #4a2816);
+}
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+// ── Synthesis sections ──
+.top {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  padding: 5px 4px 3px;
+}
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  h3 {
+    margin: 0;
+    padding: 2px 4px;
+    font: 6px/1 var(--font-pixel);
+    letter-spacing: 0.06em;
+    text-align: center;
+    color: #111;
+    background: var(--ju-ink);
+  }
+  // Slider caps by section
+  &.arp,
+  &.lfo {
+    --cap: #e8873a;
+  }
+  &.dco {
+    --cap: #e8d24a;
+  }
+  &.hpf,
+  &.vcf {
+    --cap: #e2e0d6;
+  }
+  &.vca,
+  &.env {
+    --cap: #7fb2e0;
+  }
+}
+.row {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 3px;
+  padding: 0 2px;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-self: center;
+}
+.sl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding-left: 5px;
+  .scale {
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 3px;
+    height: calc(var(--fader) - 4px);
+    background: repeating-linear-gradient(var(--ju-ink) 0 1px, transparent 1px 6.8px);
+    opacity: 0.55;
+  }
+}
+.rot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+// A lever switch: the slot, the printed position names (click one), and its name below
+.lever {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 2px;
+  row-gap: 3px;
+  align-self: flex-end;
+  .slot {
+    width: 4px;
+    background: #050505;
+    box-shadow: inset 0 0 0 1px #3a3a3c;
+  }
+  .pos {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2px;
+  }
+  .cap {
+    grid-column: 1 / 3;
+  }
+  button {
+    padding: 1px 2px;
+    border: none;
+    font: 5px/1 var(--font-pixel);
+    text-align: left;
+    white-space: nowrap;
+    color: #9a9b97;
+    background: none;
+    cursor: pointer;
+    &.on {
+      color: #111;
+      background: var(--ju-ink);
+    }
+    &:focus-visible {
+      outline: 1px solid var(--accent);
+    }
+  }
+}
+
+// Push buttons: an LED, the coloured key, and its name
+.btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  --key: #d9d7cf;
+  &.orange {
+    --key: #e8873a;
+  }
+  &.yellow {
+    --key: #e8d24a;
+  }
+  &.grey {
+    --key: #9c9d9a;
+  }
+  .key {
+    display: block;
+    width: 16px;
+    height: 7px;
+    background: var(--key);
+    box-shadow: inset 0 -2px 0 #00000059;
+  }
+  &:active .key {
+    box-shadow: inset 0 2px 0 #00000059;
+  }
+  &:focus-visible {
+    outline: 1px solid var(--accent);
+  }
+}
+.led {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4a1d22;
+  .lit > & {
+    background: #ff4d5a;
+    box-shadow: 0 0 4px #ff4d5a;
+  }
+  .blink > & {
+    animation: blink 0.5s steps(2) infinite;
+  }
+}
+@keyframes blink {
+  0% {
+    background: #ff4d5a;
+  }
+  100% {
+    background: #4a1d22;
+  }
+}
+.waves .btn {
+  flex-direction: row;
+  .lbl {
+    width: 26px;
+    text-align: left;
+  }
+}
+.chorus .row {
+  align-items: center;
+}
+
+// Memory: the patch-number display over the PATCH 1–8 buttons
+.memory {
+  margin-left: auto;
+}
+.mem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.display {
+  padding: 3px 6px;
+  font: 11px/1 var(--font-pixel);
+  color: #ff4d5a;
+  background: #2a0b0e;
+  box-shadow: inset 0 0 0 1px #000;
+  text-shadow: 0 0 4px #ff4d5a;
+}
+.patches {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 3px 4px;
+}
+
+// ── Name strip ──
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 10px;
+  border-top: 1px solid #333;
+  .sub {
+    margin-left: auto;
+    font: 5px/1 var(--font-pixel);
+    letter-spacing: 0.08em;
+    color: #b8b7b0;
+  }
+  .logo {
+    font: 14px/1 var(--font-pixel);
+    letter-spacing: 0.04em;
+  }
+}
+.kbd-mark {
+  padding: 2px 3px;
+  font: 6px/1 var(--font-pixel);
+  font-style: normal;
+  color: #18181b;
+  background: var(--green);
+}
+
+// ── Bender panel and keys ──
+.bottom {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  padding: 0 4px 6px;
+  min-height: 0;
+  kl-keyboard {
+    flex: 1;
+  }
+}
+.bender-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 112px;
+  padding: 4px;
+  background: #222224;
+}
+.knobs {
+  display: flex;
+  justify-content: space-between;
+}
+.lh-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.trig {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  .key {
+    width: 22px;
+    height: 10px;
+    border-radius: 2px;
+    background: #2e2e30;
+    box-shadow:
+      inset 0 0 0 1px #000,
+      inset 0 2px 0 #ffffff26;
+  }
+  &:active .key {
+    background: #1a1a1b;
+  }
+  &:focus-visible {
+    outline: 1px solid var(--accent);
+  }
+}
+.bender {
+  position: relative;
+  height: 14px;
+  margin: auto 8px 2px;
+  background: #050505;
+  box-shadow: inset 0 0 0 1px #000;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+  &:focus-visible {
+    box-shadow:
+      inset 0 0 0 1px #000,
+      0 0 0 2px var(--accent);
+  }
+  .handle {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 8px;
+    margin-left: -4px;
+    background: #2a2a2c;
+    box-shadow:
+      inset 0 0 0 1px #000,
+      inset 2px 0 0 #6a6b6f;
+  }
+}

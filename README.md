@@ -3,7 +3,7 @@
 <p align="center"><img src="docs/klinke-studio.png" alt="KLINKE patch floor with synths, pedals, a mixer and the timeline" width="720"></p>
 
 <p align="center">
-  A pixel-art patchbay studio in the browser · Built with Angular and the Web Audio API
+  A patch bay studio in the browser · Built with Angular and the Web Audio API
 </p>
 
 KLINKE is a modular music studio laid out like a floor of hardware. Drag synths, a sampler,
@@ -17,14 +17,10 @@ sound is generated live in the browser; there is no server.
 
 - **Patch anything into anything.** Each piece of gear has real IN and OUT jacks; signal flows
   only where cables go, and feedback loops are refused.
-- **Synths modelled on their service manuals and schematics:** MS-20, Model D and SH-101, each
-  with its original voice architecture, panel layout and quirks (note priority, glide,
-  arpeggiator, sequencer), and the fully polyphonic PS-3100 with a filter and envelope on every
-  key, three resonators and an ensemble.
-- **A singing voice chain over NOTE cables:** CHORD-8 builds chords and progressions (strum,
-  arp, patterns), MOTION-15 gives every note its own gliding, swelling, drifting voice, and
-  CHOIR-16 sings them with up to 16 physically modelled singers (vocal folds into a simulated
-  vocal tract) on a vowel chart.
+- **Synths modelled on their service manuals and schematics,** monophonic and polyphonic, each
+  with its original voice architecture, panel layout and quirks.
+- **NOTE cables** carry notes between gear: chord generators, per-note expression and a
+  physically modelled choir.
 - **SP-1200 sampling drum machine** that samples whatever you patch into it, driven from its
   front-panel keys and LCD like the original.
 - **Effects:** overdrive, delay, reverb and filter pedals, the MF-104 analog delay, and twelve
@@ -44,7 +40,7 @@ sound is generated live in the browser; there is no server.
 ## Quick start
 
 1. Open the [live demo](https://jonobail.github.io/klinke/). The demo rig is already patched:
-   the MS-20 runs through two pedals and the MF-104, and joins the Model D in the mixer
+   a synth runs through two pedals and a delay, and joins a second synth in the mixer
    feeding **MAIN • REC**.
 2. Click anywhere to start audio, then play **A S D F G H J K L** (white keys) and
    **W E T Y U O P** (black keys); **Z / X** change octave.
@@ -66,9 +62,8 @@ sound is generated live in the browser; there is no server.
 
 Only what reaches **MAIN • REC** is heard. A **MULT** splits one signal to several inputs.
 
-Blue DIN-style jacks carry notes, not sound: patch **CHORD-8 → MOTION-15 → CHOIR-16** with NOTE
-cables, CHOIR-16's OUT into the mixer, and play CHORD-8 from the keys (white keys play its 8 pads).
-Every instrument has a NOTE IN (play it from a cable) and a NOTE OUT (passes on whatever it plays),
+Blue DIN-style jacks carry notes, not sound: patch note gear into an instrument's NOTE IN with NOTE
+cables and play it from the keys. Every instrument has a NOTE IN (play it from a cable) and a NOTE OUT (passes on whatever it plays),
 so one keyboard or chord can drive several synths at once.
 
 ### Playing
@@ -103,64 +98,7 @@ across any on-screen keyboard.
 
 ### Instrument notes
 
-<details>
-<summary><b>MS-20</b></summary>
-
-Monophonic, last note wins; legato playing glides without re-triggering. WAVE FORM and SCALE
-click between four positions; knobs with a tick at 12 o'clock are ± intensities that do nothing
-at centre. EXT SIG IN runs other audio through its filters.
-</details>
-
-<details>
-<summary><b>Model D</b></summary>
-
-Monophonic with low-note priority. Rocker switches turn mixer sources and features on; the PITCH
-wheel springs back, the MOD wheel stays. Turn OSC 3 off (and its RANGE to LO) to use it as an LFO
-through OSC MOD / FILTER MOD. The OVERLOAD lamp lights when the mixer drives the filter hard.
-</details>
-
-<details>
-<summary><b>SH-101</b></summary>
-
-Monophonic with a sub-oscillator. The LFO also clocks the arpeggiator (UP / U&D / DOWN) and the
-sequencer: set SEQ to LOAD, play notes (REST for a gap), then PLAY. Holding a key while it plays
-transposes the line; HOLD latches. The sequence is saved with the patch.
-</details>
-
-<details>
-<summary><b>PS-3100</b></summary>
-
-Fully polyphonic: every key has its own filter, amplifier and envelope, so chords of any size
-work. TEMPERAMENT ADJUST retunes each note name. RESONANCE INTENSITY blends in three fixed
-resonant peaks (RESONATOR 1–3), and ENSEMBLE adds its chorus. RELEASE DAMPED stops keys short;
-ON lets them ring at the decay time. The general envelope can shape the whole keyboard through
-VCA 2 (orange switch) and the voltage processors. Only FINAL OUT, PHONES and DIRECT OUT are
-patchable jacks; see [docs/devices/ps3100.md](docs/devices/ps3100.md).
-</details>
-
-<details>
-<summary><b>SP-1200</b></summary>
-
-Click it (or a pad) to give it the keyboard: **A–K** play pads 1–8. The bank button cycles A–D;
-the Performance button switches the sliders between Tune/Decay and Mix.
-
-To sample: patch a source into SAMPLE IN (use a MULT to keep it in its chain too), press a pad to
-choose the location, press **SAMPLE**, key **5** and set the length with slider 1, then key **9**
-to sample now or **7** to arm (sampling starts when the input passes the threshold set with
-SAMPLE 4). SET-UP 19 truncates and loops; SET-UP 20 deletes. The LCD prompts each step.
-</details>
-
-<details>
-<summary><b>MF-104 and rack effects</b></summary>
-
-The MF-104 is an analog delay: RANGE doubles every delay time, and FEEDBACK at the top runs away
-into self-oscillation. Flip LOOP to EXT and patch LOOP OUT → another effect → LOOP IN to put that
-effect inside the repeats; LOOP GAIN sets how much returns.
-
-The rack processors (under **RACK** in the inventory) patch like pedals; the display shows the
-program and setting, and BYPASS passes the signal dry. Each is documented in
-[docs/devices/](docs/devices/).
-</details>
+Each piece of gear is documented in [docs/devices/](docs/devices/).
 
 ## Run locally
 
@@ -196,7 +134,7 @@ Every push to `master` runs `.github/workflows/pages.yml`, which runs the unit t
 | `src/app/recorder.ts` | Audio takes, playback and EXPORT MIX |
 | `src/app/gear/` | Gear panels and the knob / fader / keyboard controls |
 | `src/app/top-bar/`, `inventory/`, `floor/`, `timeline/`, `piano-roll/` | Screen areas |
-| `public/worklets/` | AudioWorklet that captures audio for recording |
+| `public/worklets/` | AudioWorklets: recording capture and synth voices |
 | `tests/` | `node --test` suites for `core/` |
 | `docs/` | [Roadmap](docs/ROADMAP.md) and per-device design notes |
 

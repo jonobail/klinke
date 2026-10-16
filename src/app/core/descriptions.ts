@@ -36,6 +36,31 @@ export const DESCRIPTIONS: Record<GearKind, GearInfo> = {
     purpose:
       'Record short sounds from SAMPLE IN at a gritty 12-bit / 26 kHz, then play them from eight pads with per-pad pitch, decay and level.',
   },
+  tb303: {
+    what: 'Monophonic bass line synthesizer with sequencer (1981)',
+    purpose:
+      'One oscillator (saw or square) into a squelchy 4-pole filter with accent and slide, played from its own 16-step pattern sequencer; the acid bass machine.',
+  },
+  juno60: {
+    what: '6-voice polyphonic synthesizer (1982)',
+    purpose:
+      'One DCO per voice with sub-oscillator and noise, a 24 dB filter, one envelope, an arpeggiator and the famous stereo chorus; warm pads and strings.',
+  },
+  jupiter8: {
+    what: '8-voice polyphonic synthesizer (1981)',
+    purpose:
+      'Two VCOs per voice with cross-mod and sync, a switchable 12 / 24 dB filter, two envelopes, unison and an arpeggiator; the flagship analog poly.',
+  },
+  sh2: {
+    what: 'Monophonic synthesizer (1979)',
+    purpose:
+      'Two VCOs with a sub-oscillator into a 24 dB filter with one ADSR; a simple, fat bass and lead synth.',
+  },
+  jx3p: {
+    what: '6-voice polyphonic synthesizer (1983)',
+    purpose:
+      'Two DCOs per voice with cross-mod and sync, a 24 dB filter, a chorus and a built-in step sequencer; bright, glassy polys.',
+  },
   chords: {
     what: 'Chord and progression generator (note effect)',
     purpose:

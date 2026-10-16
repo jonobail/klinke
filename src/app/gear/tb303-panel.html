@@ -1,0 +1,244 @@
+<!-- The back edge: jacks as on the hardware (NOTE IN / OUT stand in for CV / GATE) -->
+<div class="back" aria-hidden="true">
+  <span>MIX IN · SYNC IN · CV · GATE</span>
+</div>
+
+<!-- WAVEFORM and the six knobs -->
+<div class="top">
+  <div class="wave" role="radiogroup" aria-label="WAVEFORM">
+    @for (w of ['SAW', 'SQUARE']; track w; let i = $index) {
+      <button
+        type="button"
+        role="radio"
+        [class.on]="value('wave') === i"
+        [attr.aria-checked]="value('wave') === i"
+        [attr.aria-label]="'WAVEFORM ' + w"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="set('wave', i)"
+      >
+        <i class="glyph" [class.sq]="i === 1"></i>{{ w }}
+      </button>
+    }
+    <span class="lbl">WAVEFORM</span>
+  </div>
+  @for (
+    k of [
+      ['tuning', 'TUNING'],
+      ['cutoff', 'CUT OFF FREQ'],
+      ['resonance', 'RESONANCE'],
+      ['envMod', 'ENV MOD'],
+      ['decay', 'DECAY'],
+      ['accent', 'ACCENT'],
+    ];
+    track k[0]
+  ) {
+    <span class="rot">
+      <span class="lbl">{{ k[1] }}</span>
+      <kl-knob
+        [value]="value(k[0])"
+        [label]="k[1]"
+        [valueText]="
+          k[0] === 'tuning' ? ((value('tuning') * 2 - 1) * 700).toFixed(0) + ' cent' : undefined
+        "
+        (changed)="set(k[0], $event)"
+      />
+    </span>
+  }
+  <span class="brand">Bass Line</span>
+</div>
+
+<!-- Tempo, pattern, logo, volume -->
+<div class="mid">
+  <div class="tempo" title="TEMPO follows the song tempo (transport)">
+    <span class="lcd">{{ bpm() }}</span>
+    <span class="lbl">TEMPO</span>
+  </div>
+  <div class="patt">
+    <div class="pbtns" role="radiogroup" aria-label="PATTERN">
+      @for (i of patternNumbers; track i) {
+        <button
+          type="button"
+          role="radio"
+          [class.on]="patternIndex() === i"
+          [attr.aria-checked]="patternIndex() === i"
+          [attr.aria-label]="'PATTERN ' + (i + 1)"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="selectPattern(i)"
+        >
+          {{ i + 1 }}
+        </button>
+      }
+    </div>
+    <span class="lbl">PATTERN</span>
+  </div>
+  <div class="logo">
+    @if (hasKeyboard() && !preview()) {
+      <em class="kbd-mark" title="The computer keyboard and MIDI play this synth">⌨ KEYS</em>
+    }
+    <span class="model">TB-303</span>
+    <span class="sub">Computer Controlled</span>
+  </div>
+  <span class="rot vol">
+    <span class="lbl">VOLUME</span>
+    <kl-knob [value]="value('volume')" label="VOLUME" (changed)="set('volume', $event)" />
+  </span>
+</div>
+
+<!-- The 16 steps: cursor, the step playing, what each holds -->
+<div class="steps" role="listbox" aria-label="Pattern steps">
+  @for (i of stepNumbers; track i) {
+    @let st = pattern().steps[i];
+    <button
+      type="button"
+      role="option"
+      class="cell"
+      [class.cursor]="mode() !== 'play' && cursor() === i"
+      [class.out]="i >= pattern().length"
+      [class.playing]="playingStep() === i"
+      [attr.aria-selected]="cursor() === i"
+      [title]="stepTitle(i)"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="selectStep(i)"
+    >
+      <i class="led"></i>
+      <span class="n">{{ i + 1 }}</span>
+      <span class="note" [class.rest]="st.time !== 'note'">{{ stepLabel(st) }}</span>
+      <span class="marks">
+        <b [class.on]="st.time === 'note' && st.accent">A</b>
+        <b [class.on]="st.time === 'note' && st.slide">S</b>
+      </span>
+    </button>
+  }
+</div>
+
+<!-- The switch board -->
+<div class="board">
+  <div class="col runcol">
+    <button
+      type="button"
+      class="key big"
+      [class.on]="running()"
+      title="RUN / STOP (follows the song tempo; keys transpose while it runs)"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="run()"
+    >
+      <i class="led"></i><span class="cap"></span><span class="lbl">RUN/STOP</span>
+    </button>
+  </div>
+  <div class="col modes">
+    <button
+      type="button"
+      class="key"
+      [class.on]="mode() === 'pitch'"
+      title="PITCH MODE: keys, DOWN / UP, ACCENT, SLIDE write the step under the cursor"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="setMode('pitch')"
+    >
+      <i class="led"></i><span class="cap"></span><span class="lbl">PITCH MODE</span>
+    </button>
+    <button
+      type="button"
+      class="key"
+      [class.on]="mode() === 'time'"
+      title="TIME MODE: NOTE / TIE / REST write the step under the cursor"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="setMode('time')"
+    >
+      <i class="led"></i><span class="cap"></span><span class="lbl">TIME MODE</span>
+    </button>
+  </div>
+  <div class="keys" role="group" aria-label="Keys C to C">
+    @for (k of BLACK; track k) {
+      <button
+        type="button"
+        class="key"
+        [class.on]="keyLit(k)"
+        [style.grid-column]="WHITE.indexOf(k - 1) * 2 + 2 + ' / span 2'"
+        style="grid-row: 1"
+        [attr.aria-label]="NOTE_NAMES[k]"
+        (pointerdown)="keyDown($event, k)"
+      >
+        <i class="led"></i><span class="cap"></span><span class="lbl">{{ NOTE_NAMES[k] }}</span>
+      </button>
+    }
+    @for (k of WHITE; track k; let i = $index) {
+      <button
+        type="button"
+        class="key white"
+        [class.on]="keyLit(k)"
+        [style.grid-column]="i * 2 + 1 + ' / span 2'"
+        style="grid-row: 2"
+        [attr.aria-label]="NOTE_NAMES[k]"
+        (pointerdown)="keyDown($event, k)"
+      >
+        <i class="led"></i><span class="cap"></span><span class="lbl">{{ NOTE_NAMES[k] }}</span>
+      </button>
+    }
+  </div>
+  <div class="fns">
+    @for (
+      f of [
+        ['down', 'DOWN', 'NOTE'],
+        ['up', 'UP', 'TIE'],
+        ['accent', 'ACCENT', 'REST'],
+        ['slide', 'SLIDE', ''],
+      ];
+      track f[0];
+      let i = $index
+    ) {
+      <span class="tm" [class.lit]="mode() === 'time'" [style.grid-column]="i + 1">{{ f[2] }}</span>
+      <button
+        type="button"
+        class="key"
+        [class.on]="fnLit($any(f[0]))"
+        [style.grid-column]="i + 1"
+        style="grid-row: 2"
+        [attr.aria-label]="mode() === 'time' && f[2] ? f[2] : f[1]"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="fn($any(f[0]))"
+      >
+        <i class="led"></i><span class="cap"></span><span class="lbl">{{ f[1] }}</span>
+      </button>
+    }
+    <button
+      type="button"
+      class="key"
+      style="grid-column: 5; grid-row: 1"
+      title="CLEAR the pattern"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="clear()"
+    >
+      <span class="cap"></span><span class="lbl">CLEAR</span>
+    </button>
+    <button
+      type="button"
+      class="key"
+      style="grid-column: 6; grid-row: 1"
+      title="LAST STEP: end the pattern at the cursor"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="lastStep()"
+    >
+      <span class="cap"></span><span class="lbl">LAST STEP</span>
+    </button>
+    <button
+      type="button"
+      class="key"
+      style="grid-column: 5; grid-row: 2"
+      title="BACK: cursor to the step before"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="back()"
+    >
+      <span class="cap"></span><span class="lbl">BACK</span>
+    </button>
+    <button
+      type="button"
+      class="key"
+      style="grid-column: 6; grid-row: 2"
+      title="NEXT: cursor to the next step"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="next()"
+    >
+      <span class="cap"></span><span class="lbl">NEXT</span>
+    </button>
+  </div>
+</div>

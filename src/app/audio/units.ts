@@ -12,6 +12,11 @@ import { Ms20Unit } from './ms20-unit';
 import { Ps3100Unit } from './ps3100-unit';
 import { Sh101Unit } from './sh101-unit';
 import { Sp1200Unit } from './sp1200-unit';
+import { Tb303Unit } from './tb303-unit';
+import { Juno60Unit } from './juno60-unit';
+import { Jupiter8Unit } from './jupiter8-unit';
+import { Sh2Unit } from './sh2-unit';
+import { Jx3pUnit } from './jx3p-unit';
 import { type Params, Unit, glide } from './unit';
 
 // ── Pedals ──────────────────────────────────────────────
@@ -265,6 +270,16 @@ export function createUnit(kind: GearKind, ctx: AudioContext): Unit {
       return new Mf104Unit(ctx);
     case 'sp1200':
       return new Sp1200Unit(ctx);
+    case 'tb303':
+      return new Tb303Unit(ctx);
+    case 'juno60':
+      return new Juno60Unit(ctx);
+    case 'jupiter8':
+      return new Jupiter8Unit(ctx);
+    case 'sh2':
+      return new Sh2Unit(ctx);
+    case 'jx3p':
+      return new Jx3pUnit(ctx);
     case 'chords':
       return new ChordsUnit(ctx);
     case 'motion':

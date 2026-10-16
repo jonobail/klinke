@@ -81,6 +81,16 @@
   <kl-sh101-panel [gear]="gear()" [preview]="preview()" />
 } @else if (gear().kind === 'ps3100') {
   <kl-ps3100-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'tb303') {
+  <kl-tb303-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'juno60') {
+  <kl-juno60-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'jupiter8') {
+  <kl-jupiter8-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'sh2') {
+  <kl-sh2-panel [gear]="gear()" [preview]="preview()" />
+} @else if (gear().kind === 'jx3p') {
+  <kl-jx3p-panel [gear]="gear()" [preview]="preview()" />
 } @else if (gear().kind === 'chords') {
   <kl-chords-panel [gear]="gear()" [preview]="preview()" />
 } @else if (gear().kind === 'motion') {

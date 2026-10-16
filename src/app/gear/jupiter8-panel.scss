@@ -1,0 +1,363 @@
+// JUPITER-8: a black face with white silkscreen, every section under a black title bar with a
+// thin white rule, grey-capped sliders, a few black knobs, and the long strip of square buttons
+// in red, orange, yellow, white, green and blue with red LEDs; the bender panel left of the keys.
+:host {
+  --knob: 19px;
+  --fader: 68px;
+  --cap: #c8c8c4;
+  --cap-bg: #141416;
+  --cap-ring: #4a4a50;
+  --jp-face: #1d1d20;
+  --jp-ink: #ecebe6;
+  --jp-bar: #08080a;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  color: var(--jp-ink);
+  background: var(--jp-face);
+  font: 6px/1 var(--font-pixel);
+}
+.lbl {
+  font: 5px/1.1 var(--font-pixel);
+  white-space: nowrap;
+  text-align: center;
+  color: var(--jp-ink);
+}
+.ctl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  &.big {
+    --knob: 25px;
+  }
+}
+
+// ── Back strip: name plate and jacks ──
+.back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 18px;
+  padding: 0 8px;
+  background: #0e0e10;
+  border-bottom: 1px solid #000;
+  .logo {
+    font: 11px/1 var(--font-pixel);
+    letter-spacing: 0.12em;
+  }
+}
+.kbd-mark {
+  padding: 2px 3px;
+  font: 6px/1 var(--font-pixel);
+  font-style: normal;
+  color: #18181b;
+  background: var(--green);
+}
+
+// ── Synthesis sections ──
+.face {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 3px;
+  padding: 5px 6px 4px;
+}
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  h3 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 0;
+    padding: 3px 4px;
+    font: 6px/1 var(--font-pixel);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    background: var(--jp-bar);
+    box-shadow:
+      inset 0 -1px 0 var(--jp-ink),
+      inset 0 0 0 1px #000;
+  }
+}
+.row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 5px;
+  padding: 0 2px;
+}
+.sub {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  .sub-title {
+    padding-bottom: 2px;
+    font: 5px/1 var(--font-pixel);
+    text-align: center;
+    border-bottom: 1px solid var(--jp-ink);
+    &.under {
+      padding: 2px 0 0;
+      border-bottom: none;
+      border-top: 1px solid var(--jp-ink);
+    }
+  }
+}
+.lamp {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ff4d5a;
+  box-shadow: 0 0 3px #ff4d5a;
+  animation: blink 1s steps(2, jump-none) infinite;
+}
+@keyframes blink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.15;
+  }
+}
+
+// A slide switch: the slot and its printed positions (click one to select it)
+.sw {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  .slot {
+    width: 4px;
+    background: #050506;
+    box-shadow: inset 0 0 0 1px #3a3a3e;
+  }
+  .pos {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2px;
+  }
+  button {
+    padding: 1px 2px;
+    border: none;
+    font: 5px/1 var(--font-pixel);
+    text-align: left;
+    white-space: nowrap;
+    color: #8f8f8b;
+    background: none;
+    cursor: pointer;
+    &.on {
+      color: #111;
+      background: var(--cap);
+    }
+    &:focus-visible {
+      outline: 1px solid var(--accent);
+    }
+  }
+}
+
+// ── Button strip ──
+.strip {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0 6px;
+  padding: 5px 6px 4px;
+  background: #151517;
+  border-top: 2px solid #000;
+  border-bottom: 2px solid #000;
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  &.tune {
+    align-self: center;
+  }
+  .cap {
+    padding-top: 2px;
+    font: 5px/1 var(--font-pixel);
+    text-align: center;
+    white-space: nowrap;
+    border-top: 1px solid var(--jp-ink);
+  }
+}
+.btns,
+.names {
+  display: flex;
+  gap: 2px;
+}
+.names span {
+  width: 18px;
+  overflow: hidden;
+  font: 4px/1 var(--font-pixel);
+  text-align: center;
+  white-space: nowrap;
+}
+.btn {
+  position: relative;
+  width: 18px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: var(--btn);
+  box-shadow:
+    inset 0 -3px 0 #00000059,
+    inset 0 1px 0 #ffffff59,
+    0 0 0 1px #000;
+  &:active:not(.dead) {
+    box-shadow:
+      inset 0 2px 0 #00000059,
+      0 0 0 1px #000;
+  }
+  &.dead {
+    cursor: default;
+    filter: brightness(0.7);
+  }
+  &:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .led {
+    position: absolute;
+    top: 3px;
+    left: calc(50% - 2px);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #5a1d22;
+  }
+  &.on .led {
+    background: #ff4d5a;
+    box-shadow: 0 0 4px #ff4d5a;
+  }
+  &.red {
+    --btn: #d2453b;
+  }
+  &.orange {
+    --btn: #e58a2e;
+  }
+  &.yellow {
+    --btn: #e8cc3a;
+  }
+  &.white {
+    --btn: #e8e6de;
+  }
+  &.green {
+    --btn: #5aa85a;
+  }
+  &.blue {
+    --btn: #4f86c6;
+  }
+  &.navy {
+    --btn: #2d3f86;
+  }
+}
+.display {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  .digits {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 24px;
+    font: 10px/1 var(--font-pixel);
+    letter-spacing: 0.06em;
+    color: #ff4d5a;
+    text-shadow: 0 0 4px #ff4d5a99;
+    background: #1a0507;
+    box-shadow: inset 0 0 0 2px #000;
+  }
+  .cap {
+    padding-top: 2px;
+    font: 5px/1 var(--font-pixel);
+    text-align: center;
+    border-top: 1px solid var(--jp-ink);
+  }
+}
+
+// ── Bender panel and keys ──
+.bottom {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  padding: 5px 6px 6px;
+  min-height: 0;
+  kl-keyboard {
+    flex: 1;
+  }
+}
+.bender-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 4px;
+  width: 196px;
+  padding: 6px;
+  background: #151517;
+  box-shadow: inset 0 0 0 1px #000;
+  --fader: 52px;
+}
+.bp-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 4px;
+}
+.lever-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 62px;
+}
+.lfo-mod {
+  padding: 4px 2px;
+  border: none;
+  font: 4px/1 var(--font-pixel);
+  color: #111;
+  background: var(--cap);
+  box-shadow:
+    inset 0 -2px 0 #00000059,
+    0 0 0 1px #000;
+  cursor: pointer;
+  &:active {
+    box-shadow: inset 0 2px 0 #00000059;
+  }
+}
+.bender {
+  position: relative;
+  height: 16px;
+  background: #050506;
+  box-shadow: inset 0 0 0 1px #3a3a3e;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+  &:focus-visible {
+    box-shadow:
+      inset 0 0 0 1px #000,
+      0 0 0 2px var(--accent);
+  }
+  .lever {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 8px;
+    margin-left: -4px;
+    background: #2a2a2c;
+    box-shadow:
+      inset 0 0 0 1px #000,
+      inset 2px 0 0 #77777c;
+  }
+}

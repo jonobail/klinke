@@ -70,10 +70,13 @@ export class ChoirUnit extends Unit implements Playable {
   private readonly hall = this.ctx.createConvolver();
   private readonly wet = this.ctx.createGain();
   private readonly volume = this.ctx.createGain();
+  /** The OUT jack: its own node, so re-patching (which unplugs it) leaves the meter on `volume`. */
+  private readonly out = this.ctx.createGain();
 
   constructor(ctx: AudioContext) {
     super(ctx);
-    this.output = this.volume;
+    this.volume.connect(this.out);
+    this.output = this.out;
     for (const lp of [this.lp1, this.lp2]) {
       lp.type = 'lowpass';
       lp.frequency.value = ctx.sampleRate * 0.2;

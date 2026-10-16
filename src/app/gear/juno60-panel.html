@@ -1,0 +1,326 @@
+<ng-template #slider let-id let-label="label" let-steps="steps">
+  <span class="sl">
+    <span class="scale" aria-hidden="true"></span>
+    <kl-fader
+      [value]="value(id)"
+      [label]="label"
+      [steps]="steps ?? 0"
+      [valueText]="steps ? optionText(id) : undefined"
+      (changed)="set(id, $event)"
+    />
+    <span class="lbl">{{ param(id).label }}</span>
+  </span>
+</ng-template>
+
+<ng-template #lever let-l>
+  <div class="lever" role="radiogroup" [attr.aria-label]="l.label">
+    <span class="slot" aria-hidden="true"></span>
+    <div class="pos">
+      @for (p of l.positions; track p.name) {
+        <button
+          type="button"
+          role="radio"
+          [class.on]="isAt(l, p.value)"
+          [attr.aria-checked]="isAt(l, p.value)"
+          [attr.aria-label]="l.label + ' ' + p.name"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="set(l.id, p.value)"
+        >
+          {{ p.name }}
+        </button>
+      }
+    </div>
+    <span class="lbl cap">{{ l.label }}</span>
+  </div>
+</ng-template>
+
+<ng-template #button let-id let-label="label" let-colour="colour">
+  <button
+    type="button"
+    class="btn"
+    [class]="colour"
+    [class.lit]="on(id)"
+    [attr.aria-pressed]="on(id)"
+    [title]="label"
+    (pointerdown)="$event.stopPropagation()"
+    (click)="toggle(id)"
+  >
+    <i class="led"></i><span class="key"></span><span class="lbl">{{ label }}</span>
+  </button>
+</ng-template>
+
+<!-- The rear panel along the back -->
+<div class="rear" aria-hidden="true">
+  <span>DCB · PATCH SHIFT · SAVE · LOAD · PROTECT</span>
+  <span class="right">ARPEGGIO CLOCK · VCF CONTROL · HOLD · PHONES · OUTPUT</span>
+</div>
+
+<div class="face">
+  <div class="cheek" aria-hidden="true"></div>
+  <div class="body">
+    <!-- Synthesis sections -->
+    <div class="top">
+      <section class="arp">
+        <h3>ARPEGGIO</h3>
+        <div class="row">
+          <div class="col">
+            <button
+              type="button"
+              class="btn white"
+              [class.lit]="transposed() !== 0"
+              [class.blink]="arming()"
+              title="KEY TRANSPOSE: press, then a key (C4 = none); press again to clear"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="keyTranspose()"
+            >
+              <i class="led"></i><span class="key"></span><span class="lbl">KEY TRANS</span>
+            </button>
+            <ng-container
+              *ngTemplateOutlet="
+                button;
+                context: { $implicit: 'hold', label: 'HOLD', colour: 'white' }
+              "
+            />
+            <ng-container
+              *ngTemplateOutlet="
+                button;
+                context: { $implicit: 'arp', label: 'ON/OFF', colour: 'white' }
+              "
+            />
+          </div>
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: arpMode }" />
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: arpRange }" />
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: arpClock }" />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'arpRate', label: 'ARPEGGIO RATE' }"
+          />
+        </div>
+      </section>
+      <section class="lfo">
+        <h3>LFO</h3>
+        <div class="row">
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'lfoRate', label: 'LFO RATE' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'lfoDelay', label: 'LFO DELAY TIME' }"
+          />
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: lfoTrig }" />
+        </div>
+      </section>
+      <section class="dco">
+        <h3>DCO</h3>
+        <div class="row">
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'dcoLfo', label: 'DCO LFO' }"
+          />
+          <ng-container *ngTemplateOutlet="slider; context: { $implicit: 'pw', label: 'PWM' }" />
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: pwmMode }" />
+          <div class="col waves">
+            <ng-container
+              *ngTemplateOutlet="
+                button;
+                context: { $implicit: 'pulse', label: '⊓ PULSE', colour: 'orange' }
+              "
+            />
+            <ng-container
+              *ngTemplateOutlet="
+                button;
+                context: { $implicit: 'saw', label: '◿ SAW', colour: 'orange' }
+              "
+            />
+            <ng-container
+              *ngTemplateOutlet="
+                button;
+                context: { $implicit: 'subOn', label: 'SUB', colour: 'orange' }
+              "
+            />
+          </div>
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'sub', label: 'SUB OSC' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'noise', label: 'NOISE' }"
+          />
+        </div>
+      </section>
+      <section class="hpf">
+        <h3>HPF</h3>
+        <div class="row">
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'hpf', label: 'HPF FREQ', steps: 4 }"
+          />
+        </div>
+      </section>
+      <section class="vcf">
+        <h3>VCF</h3>
+        <div class="row">
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'cutoff', label: 'VCF FREQ' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'res', label: 'VCF RES' }"
+          />
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: envPolarity }" />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'vcfEnv', label: 'VCF ENV' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'vcfLfo', label: 'VCF LFO' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'vcfKybd', label: 'VCF KYBD' }"
+          />
+        </div>
+      </section>
+      <section class="vca">
+        <h3>VCA</h3>
+        <div class="row">
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: vcaMode }" />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'vcaLevel', label: 'VCA LEVEL' }"
+          />
+        </div>
+      </section>
+      <section class="env">
+        <h3>ENV</h3>
+        <div class="row">
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'attack', label: 'ENV A' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'decay', label: 'ENV D' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'sustain', label: 'ENV S' }"
+          />
+          <ng-container
+            *ngTemplateOutlet="slider; context: { $implicit: 'release', label: 'ENV R' }"
+          />
+        </div>
+      </section>
+      <section class="chorus">
+        <h3>CHORUS</h3>
+        <div class="row">
+          <button
+            type="button"
+            class="btn grey"
+            [class.lit]="value('chorus') < 0.01"
+            title="CHORUS OFF"
+            (pointerdown)="$event.stopPropagation()"
+            (click)="chorusPress(0)"
+          >
+            <i class="led"></i><span class="key"></span><span class="lbl">OFF</span>
+          </button>
+          @for (b of [1, 2]; track b) {
+            <button
+              type="button"
+              class="btn grey"
+              [class.lit]="chorusOn(b)"
+              [title]="'CHORUS ' + (b === 1 ? 'I' : 'II') + ' (I and II together for I+II)'"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="chorusPress(b)"
+            >
+              <i class="led"></i><span class="key"></span
+              ><span class="lbl">{{ b === 1 ? 'I' : 'II' }}</span>
+            </button>
+          }
+        </div>
+      </section>
+      <section class="memory">
+        <h3>MEMORY</h3>
+        <div class="mem">
+          <span class="display" title="PATCH NUMBER">{{ patch() ? '1' + patch() : '--' }}</span>
+          <div class="patches">
+            @for (p of patches; track p.name; let i = $index) {
+              <button
+                type="button"
+                class="btn yellow"
+                [class.lit]="patch() === i + 1"
+                [title]="'PATCH ' + (i + 1) + ': ' + p.name"
+                (pointerdown)="$event.stopPropagation()"
+                (click)="load(i)"
+              >
+                <i class="led"></i><span class="key"></span><span class="lbl">{{ i + 1 }}</span>
+              </button>
+            }
+          </div>
+          <span class="lbl">PATCH NUMBER</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- Name strip -->
+    <div class="strip">
+      <span class="sub">PROGRAMMABLE POLYPHONIC SYNTHESIZER</span>
+      @if (hasKeyboard() && !preview()) {
+        <em class="kbd-mark" title="The computer keyboard and MIDI play this synth">⌨ KEYS</em>
+      }
+      <span class="logo">JUNO-60</span>
+    </div>
+
+    <!-- Bender panel and keys -->
+    <div class="bottom">
+      <div class="bender-panel">
+        <div class="knobs">
+          <span class="rot">
+            <kl-knob [value]="value('volume')" label="VOLUME" (changed)="set('volume', $event)" />
+            <span class="lbl">VOLUME</span>
+          </span>
+          <span class="rot">
+            <kl-knob
+              [value]="value('tune')"
+              label="TUNE"
+              [valueText]="((value('tune') * 2 - 1) * 50).toFixed(0) + ' cent'"
+              (changed)="set('tune', $event)"
+            />
+            <span class="lbl">TUNE</span>
+          </span>
+          <span class="rot">
+            <kl-knob
+              [value]="value('bendDco')"
+              label="BENDER DCO"
+              (changed)="set('bendDco', $event)"
+            />
+            <span class="lbl">DCO</span>
+          </span>
+          <span class="rot">
+            <kl-knob
+              [value]="value('bendVcf')"
+              label="BENDER VCF"
+              (changed)="set('bendVcf', $event)"
+            />
+            <span class="lbl">VCF</span>
+          </span>
+        </div>
+        <div class="lh-row">
+          <ng-container *ngTemplateOutlet="lever; context: { $implicit: octave }" />
+          <button
+            type="button"
+            class="trig"
+            title="LFO TRIG (TRIG MODE MAN: hold for the LFO)"
+            (pointerdown)="lfoTrigDown($event)"
+          >
+            <span class="key"></span><span class="lbl">LFO TRIG</span>
+          </button>
+        </div>
+        <div
+          class="bender"
+          role="slider"
+          tabindex="0"
+          aria-label="Bender (drag sideways)"
+          aria-valuemin="-100"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="(bend() * 100).toFixed(0)"
+          title="BENDER: drag sideways to bend"
+          (pointerdown)="benderDown($event)"
+          (keydown)="benderKey($event)"
+        >
+          <span class="handle" [style.left.%]="50 + bend() * 42"></span>
+        </div>
+      </div>
+      <kl-keyboard [gearId]="gear().id" [layout]="keyboard()" [preview]="preview()" />
+    </div>
+  </div>
+  <div class="cheek" aria-hidden="true"></div>
+</div>

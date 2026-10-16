@@ -1,0 +1,278 @@
+// SH-2: a light grey slider panel with black silkscreen and section bars, black slider slots and
+// caps, four black rotary knobs for RANGE / WAVEFORM, and a black cheek with the bender to the
+// left of the keys.
+:host {
+  --knob: 18px;
+  --fader: 54px;
+  --cap: #1c1c1e;
+  --cap-ring: #6a6b6f;
+  --sh-face: #b9bab5;
+  --sh-ink: #17181a;
+  --sh-black: #1f2022;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  color: var(--sh-ink);
+  background: var(--sh-face);
+  font: 6px/1 var(--font-pixel);
+}
+.lbl {
+  font: 5px/1 var(--font-pixel);
+  white-space: nowrap;
+  color: var(--sh-ink);
+}
+
+// ── Jack strip ──
+.jacks {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 8px 3px 126px;
+  background: var(--sh-black);
+  font: 5px/1 var(--font-pixel);
+  color: #a9aaa6;
+  .right {
+    letter-spacing: 0.08em;
+    color: #ecebe6;
+  }
+}
+
+// ── Synthesis sections ──
+.top {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 4px 4px 5px;
+  border-bottom: 2px solid var(--sh-black);
+}
+.tune {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 30px;
+  .big {
+    --knob: 24px;
+  }
+}
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  h3 {
+    margin: 0;
+    padding: 2px 3px;
+    font: 6px/1 var(--font-pixel);
+    letter-spacing: 0.06em;
+    text-align: center;
+    color: #ecebe6;
+    background: var(--sh-black);
+  }
+}
+.row {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 2px;
+  padding: 0 1px;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  align-self: stretch;
+}
+// Each slider with a printed scale beside it
+.sl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding-left: 4px;
+  .scale {
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 3px;
+    height: calc(var(--fader) - 4px);
+    background: repeating-linear-gradient(var(--sh-ink) 0 1px, transparent 1px 5px);
+    opacity: 0.55;
+  }
+  kl-fader {
+    --cap: #1c1c1e;
+  }
+}
+.rot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  align-self: center;
+  --knob: 20px;
+}
+// A slide switch: the slot, and the printed position names (click one to select it)
+.sw {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  align-self: center;
+  .slot {
+    width: 4px;
+    background: var(--sh-black);
+  }
+  .pos {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2px;
+  }
+  button {
+    padding: 1px 2px;
+    border: none;
+    font: 5px/1 var(--font-pixel);
+    text-align: left;
+    white-space: nowrap;
+    color: #4a4b4e;
+    background: none;
+    cursor: pointer;
+    &.on {
+      color: #ecebe6;
+      background: var(--sh-black);
+    }
+    &:focus-visible {
+      outline: 1px solid var(--accent);
+    }
+  }
+}
+.led {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4a1d22;
+  &.on {
+    background: #ff4d5a;
+    box-shadow: 0 0 4px #ff4d5a;
+  }
+  &.blink {
+    animation: blink 1s steps(1) infinite;
+  }
+}
+@keyframes blink {
+  0% {
+    background: #ff4d5a;
+    box-shadow: 0 0 4px #ff4d5a;
+  }
+  50% {
+    background: #4a1d22;
+    box-shadow: none;
+  }
+}
+
+// ── Black cheek and keys ──
+.bottom {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  padding: 0 6px 6px 0;
+  min-height: 0;
+  background: var(--sh-black);
+  kl-keyboard {
+    flex: 1;
+    padding-top: 4px;
+  }
+}
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 112px;
+  padding: 4px 6px 0;
+  .lbl {
+    color: #ecebe6;
+  }
+  .sl .scale {
+    background: repeating-linear-gradient(#ecebe6 0 1px, transparent 1px 5px);
+  }
+  .sl kl-fader {
+    --cap: #c9cac6;
+  }
+}
+.lh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  &.sliders {
+    --fader: 34px;
+    align-items: flex-end;
+  }
+}
+.power {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font: 5px/1 var(--font-pixel);
+  color: #ecebe6;
+}
+.sens {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  .pair {
+    display: flex;
+    gap: 4px;
+  }
+  .cap {
+    width: 100%;
+    padding-top: 2px;
+    border-top: 1px solid #ecebe6;
+    text-align: center;
+    font: 5px/1 var(--font-pixel);
+    color: #ecebe6;
+  }
+}
+.bender {
+  position: relative;
+  height: 14px;
+  margin: auto 6px 0;
+  background: #0b0b0c;
+  box-shadow: inset 0 0 0 1px #4a4b4e;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+  &:focus-visible {
+    box-shadow:
+      inset 0 0 0 1px #000,
+      0 0 0 2px var(--accent);
+  }
+  .lever {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 8px;
+    margin-left: -4px;
+    background: #c9cac6;
+    box-shadow:
+      inset 0 0 0 1px #000,
+      inset 2px 0 0 #ffffff;
+  }
+}
+.bender-lbl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.kbd-mark {
+  padding: 2px 3px;
+  font: 5px/1 var(--font-pixel);
+  font-style: normal;
+  color: #18181b;
+  background: var(--green);
+}
