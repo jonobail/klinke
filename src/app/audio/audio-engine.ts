@@ -4,7 +4,7 @@ import { type Cable, type Patch } from '../core/patch';
 import { BASE_MAX, BASE_MIN, noteName, parseMidi, shiftBase } from '../core/sound';
 import { PatchStore } from '../patch-store';
 import { Transport } from '../transport';
-import { type NoteEvent, type Unit, isPlayable } from './unit';
+import { type NoteEvent, type Playable, type Unit, isPlayable } from './unit';
 import { createUnit } from './units';
 
 /** A note played by hand on a piece of gear: on (true) or off. */
@@ -24,13 +24,20 @@ export const playsNotes = (kind: GearKind) =>
  * so unplugging it can stop them instead of leaving them hanging.
  */
 interface NoteLine {
+  key: string;
   from: Unit;
   fromJack: string;
   to: Unit;
+  toId: string;
   jack: string;
   /** Sounding voice → its note. */
   open: Map<number, number>;
 }
+
+/** Velocity of notes from the keys, MIDI and tracks as they leave an instrument's NOTE OUT. */
+const KEY_VELOCITY = 0.8;
+/** The NOTE OUT jack on every instrument. */
+const NOTE_OUT = 'notesOut';
 
 const isNoteCable = (patch: Patch, c: Cable) => {
   const kind = patch.gear.find((g) => g.id === c.from.gear)?.kind;
@@ -208,7 +215,8 @@ export class AudioEngine {
     this.sounding.set(key, id);
     const unit = this.units.get(id);
     if (isPlayable(unit)) unit.noteOn(note, note - this.base());
-    this.held.update((h) => ({ ...h, [id]: [...(h[id] ?? []).filter((n) => n !== note), note] }));
+    this.hold(id, note, true);
+    this.thru(id, `key:${key}`, { type: 'on', voice: 0, note, velocity: KEY_VELOCITY });
     if (!fromTrack) for (const l of this.listeners) l(id, note, true);
   }
 
@@ -219,7 +227,8 @@ export class AudioEngine {
     this.sounding.delete(key);
     const unit = this.units.get(id);
     if (isPlayable(unit)) unit.noteOff(note);
-    this.held.update((h) => ({ ...h, [id]: (h[id] ?? []).filter((n) => n !== note) }));
+    this.hold(id, note, false);
+    this.thru(id, `key:${key}`, { type: 'off', voice: 0, note });
     if (!fromTrack) for (const l of this.listeners) l(id, note, false);
   }
 
@@ -236,6 +245,8 @@ export class AudioEngine {
     // Anything a note effect still holds open down a NOTE cable stops too.
     for (const line of this.noteLines.values()) this.release(line);
     this.sounding.clear();
+    this.cableNotes.clear();
+    this.thruVoices.clear();
     this.held.set({});
   }
 
@@ -246,6 +257,11 @@ export class AudioEngine {
     const unit = this.units.get(id);
     if (isPlayable(unit)) unit.pitchBend(amount);
     this.bends.update((b) => ({ ...b, [id]: amount }));
+    // The wheel bends the notes played on the keys as they leave NOTE OUT (±2 semitones).
+    for (const [source, voice] of this.thruVoices.get(id) ?? []) {
+      if (source.startsWith('key:'))
+        this.emitThru(id, { type: 'expr', voice, note: 0, bend: amount * 2 });
+    }
   }
 
   /** A front-panel action on one piece of gear (see `Unit.command`). */
@@ -280,6 +296,8 @@ export class AudioEngine {
       unit.dispose();
       for (const jack of Object.keys(unit.noteOuts)) unit.noteOuts[jack] = undefined;
       this.units.delete(id);
+      this.cableNotes.delete(unit);
+      this.thruVoices.delete(id);
       this.lastParams.delete(id);
       this.lastText.delete(id);
     }
@@ -343,7 +361,15 @@ export class AudioEngine {
         key,
         old?.from === from && old.to === to
           ? old
-          : { from, fromJack: c.from.jack, to, jack: c.to.jack, open: new Map() },
+          : {
+              key,
+              from,
+              fromJack: c.from.jack,
+              to,
+              toId: c.to.gear,
+              jack: c.to.jack,
+              open: new Map(),
+            },
       );
     }
     const live = new Set(this.units.values());
@@ -366,14 +392,94 @@ export class AudioEngine {
   private send(line: NoteLine, e: NoteEvent) {
     if (e.type === 'on') line.open.set(e.voice, e.note);
     else if (e.type === 'off') line.open.delete(e.voice);
-    line.to.receive?.(line.jack, e);
+    this.deliver(line, e);
   }
 
   /** Stops every voice a NOTE cable still has sounding. */
   private release(line: NoteLine) {
     const open = [...line.open];
     line.open.clear();
-    for (const [voice, note] of open) line.to.receive?.(line.jack, { type: 'off', voice, note });
+    for (const [voice, note] of open) this.deliver(line, { type: 'off', voice, note });
+  }
+
+  /**
+   * Hands an event to the gear at the end of a NOTE cable. Gear that reads note events itself
+   * gets them as they are; a synth that only knows keys plays the note as if its key went down
+   * (per-note expression doesn't reach it). An instrument then passes the note on through its
+   * NOTE OUT.
+   */
+  private deliver(line: NoteLine, e: NoteEvent) {
+    const to = line.to;
+    if (to.receive) to.receive(line.jack, e);
+    else if (isPlayable(to)) this.playCableNote(line, to, e);
+    const gear = this.store.patch().gear.find((g) => g.id === line.toId);
+    if (gear && GEAR[gear.kind].category === 'synth') {
+      if (e.type !== 'expr') this.hold(line.toId, e.note, e.type === 'on');
+      this.thru(line.toId, `${line.key}:${e.voice}`, e);
+    }
+  }
+
+  /** Notes a key-only synth is playing from NOTE cables, with how many voices hold each. */
+  private readonly cableNotes = new Map<Unit, Map<number, number>>();
+
+  private playCableNote(line: NoteLine, unit: Unit & Playable, e: NoteEvent) {
+    if (e.type === 'expr') return;
+    let counts = this.cableNotes.get(unit);
+    if (!counts) this.cableNotes.set(unit, (counts = new Map()));
+    const n = counts.get(e.note) ?? 0;
+    if (e.type === 'on') {
+      counts.set(e.note, n + 1);
+      unit.noteOn(e.note, e.note - this.base());
+    } else if (n > 0) {
+      // Two voices on the same note: the key comes up when the last one lets go.
+      if (n > 1) counts.set(e.note, n - 1);
+      else {
+        counts.delete(e.note);
+        unit.noteOff(e.note);
+      }
+    }
+  }
+
+  /** Lights (or unlights) a key on an instrument's keyboard. */
+  private hold(id: string, note: number, on: boolean) {
+    this.held.update((h) => {
+      const rest = (h[id] ?? []).filter((n) => n !== note);
+      return { ...h, [id]: on ? [...rest, note] : rest };
+    });
+  }
+
+  // ── NOTE OUT on instruments ───────────────────────────
+
+  /**
+   * Voices an instrument is sending out of its NOTE OUT, keyed by where each note came from
+   * (a key, a track, or a voice on a NOTE cable): every note it plays goes out with a voice id
+   * of its own, so notes from different places never get mixed up downstream.
+   */
+  private readonly thruVoices = new Map<string, Map<string, number>>();
+  private nextThru = 1;
+
+  /** Sends a note an instrument is playing out of its NOTE OUT (synths only: note effects send their own). */
+  private thru(id: string, source: string, e: NoteEvent) {
+    const gear = this.store.patch().gear.find((g) => g.id === id);
+    if (!gear || GEAR[gear.kind].category !== 'synth') return;
+    let voices = this.thruVoices.get(id);
+    if (!voices) this.thruVoices.set(id, (voices = new Map()));
+    if (e.type === 'on') {
+      const old = voices.get(source);
+      if (old !== undefined) this.emitThru(id, { type: 'off', voice: old, note: e.note });
+      const voice = this.nextThru++;
+      voices.set(source, voice);
+      this.emitThru(id, { ...e, voice });
+      return;
+    }
+    const voice = voices.get(source);
+    if (voice === undefined) return;
+    if (e.type === 'off') voices.delete(source);
+    this.emitThru(id, { ...e, voice });
+  }
+
+  private emitThru(id: string, e: NoteEvent) {
+    this.units.get(id)?.noteOuts[NOTE_OUT]?.(e);
   }
 
   // ── Recording taps and take playback ──────────────────

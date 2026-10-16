@@ -114,6 +114,18 @@ export interface GearDef {
   face?: { panel: string; text: string; display?: string };
 }
 
+/**
+ * An instrument's NOTE IN and NOTE OUT jacks, at the given fractions of its width / height: IN
+ * plays it from a NOTE cable, OUT sends on every note it plays (keys, MIDI, tracks and NOTE IN).
+ */
+export const noteJacks = (
+  inAt: [fx: number, fy: number],
+  outAt: [fx: number, fy: number],
+): JackDef[] => [
+  { id: 'notesIn', dir: 'in', signal: 'note', fx: inAt[0], fy: inAt[1], label: 'NOTE IN' },
+  { id: 'notesOut', dir: 'out', signal: 'note', fx: outAt[0], fy: outAt[1], label: 'NOTE OUT' },
+];
+
 export const p = (id: string, label: string, def: number, min = 0, max = 1): ParamDef => ({
   id,
   label,

@@ -191,6 +191,12 @@ h3 {
     align-self: flex-end;
     margin-bottom: 4px;
   }
+  // Under the NOTE jacks, which sit on the band's edge between the audio ones.
+  .note {
+    position: absolute;
+    bottom: 0;
+    transform: translateX(-50%);
+  }
 }
 
 // ── Top modules ─────────────────────────────────────────

@@ -41,7 +41,8 @@ export class Ps3100Panel {
   private readonly store = inject(PatchStore);
   private readonly def = computed(() => GEAR[this.gear().kind]);
   protected readonly keyboard = computed(() => this.def().keyboard!);
-  protected readonly outJacks = computed(() => this.def().jacks.filter((j) => j.dir === 'out'));
+  /** The jacks down the right edge (the outputs, NOTE IN / OUT), named on the panel beside them. */
+  protected readonly edgeJacks = computed(() => this.def().jacks.filter((j) => j.fx > 0.9));
   protected readonly hasKeyboard = computed(() => this.engine.keyboardSynth() === this.gear().id);
   private readonly params = computed(() => new Map(this.def().params.map((d) => [d.id, d])));
   private readonly settings = computed(() => ps3100Settings(this.gear().params));

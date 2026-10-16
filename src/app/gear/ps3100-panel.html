@@ -285,7 +285,7 @@
   <div class="cheek"></div>
 </div>
 
-<!-- Names for the real output jacks, beside where the floor draws them -->
-@for (j of outJacks(); track j.id) {
+<!-- Names for the real jacks, beside where the floor draws them -->
+@for (j of edgeJacks(); track j.id) {
   <span class="out-lbl" [style.top.%]="j.fy * 100">{{ j.label }}</span>
 }

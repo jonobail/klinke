@@ -10,6 +10,7 @@ import {
   type GearKind,
   type JackDef,
   bi,
+  noteJacks,
   p,
   pedal,
   rocker,
@@ -42,6 +43,7 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
     jacks: [
       { id: 'in', dir: 'in', fx: 0.025, fy: 0.98 },
       { id: 'out', dir: 'out', fx: 0.975, fy: 0.98 },
+      ...noteJacks([0.025, 0.03], [0.975, 0.03]),
     ],
     params: [
       sel('vco1Wave', 'WAVE FORM', ['TRIANGLE', 'SAWTOOTH', 'PULSE (PW)', 'WHITE NOISE'], 1),
@@ -102,6 +104,7 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
     jacks: [
       { id: 'in', dir: 'in', fx: 0.02, fy: 0.98 },
       { id: 'out', dir: 'out', fx: 0.98, fy: 0.98 },
+      ...noteJacks([0.02, 0.03], [0.98, 0.03]),
     ],
     params: [
       // Controllers
@@ -262,7 +265,10 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
     w: 18,
     h: 10,
     // OUTPUT sits in the jack strip along the back, top right, as on the hardware.
-    jacks: [{ id: 'out', dir: 'out', fx: 0.975, fy: 0.03, label: 'OUTPUT' }],
+    jacks: [
+      ...noteJacks([0.57, 0.03], [0.62, 0.03]),
+      { id: 'out', dir: 'out', fx: 0.975, fy: 0.03, label: 'OUTPUT' },
+    ],
     params: [
       p('volume', 'VOLUME', 0.7),
       p('portaTime', 'PORTA', 0.2),
@@ -317,6 +323,7 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
       { id: 'out', dir: 'out', fx: 0.975, fy: 0.27, label: 'FINAL OUT' },
       { id: 'phones', dir: 'out', fx: 0.975, fy: 0.335, label: 'PHONES' },
       { id: 'direct', dir: 'out', fx: 0.975, fy: 0.4, label: 'DIRECT OUT' },
+      ...noteJacks([0.975, 0.48], [0.975, 0.545]),
     ],
     params: [
       ...NOTE_NAMES.map((n, i) => bi(`temper${i}`, n)),
@@ -379,6 +386,7 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
     jacks: [
       { id: 'in', dir: 'in', fx: 0.035, fy: 0.975, label: 'SAMPLE IN' },
       { id: 'out', dir: 'out', fx: 0.965, fy: 0.975, label: 'MIX OUT' },
+      ...noteJacks([0.3, 0.975], [0.7, 0.975]),
     ],
     params: [
       sel('bank', 'BANK', ['A', 'B', 'C', 'D'], 0),

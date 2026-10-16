@@ -305,3 +305,17 @@ test('NOTE cables join NOTE jacks only, and note loops are refused', () => {
   bad.cables.push({ from: { gear: 'g1', jack: 'notesOut' }, to: { gear: 'g5', jack: 'in' } });
   assert.equal(parsePatch(JSON.stringify(bad))!.cables.length, 0);
 });
+
+test('every instrument has a NOTE IN and a NOTE OUT', () => {
+  for (const def of Object.values(GEAR)) {
+    if (def.category !== 'synth' && def.category !== 'midi') continue;
+    for (const [id, dir] of [
+      ['notesIn', 'in'],
+      ['notesOut', 'out'],
+    ] as const) {
+      const jack = def.jacks.find((j) => j.id === id);
+      assert.equal(jack?.dir, dir, `${def.kind} ${id}`);
+      assert.equal(jack?.signal, 'note', `${def.kind} ${id}`);
+    }
+  }
+});

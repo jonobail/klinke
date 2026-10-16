@@ -239,7 +239,10 @@ tracks like a synth.
       CHOIR / TUTTI / SOLO, room
 - [ ] Listen-through on real hardware; tune CHOIR-16 levels and styles by ear
 - [ ] Consonants for CHOIR-16 (it sings vowels only); tempo-synced vowel motion
-- [ ] NOTE IN jacks on the existing synths (the PS-3100 especially) so CHORD-8 can play them
+- [x] NOTE IN / NOTE OUT on every instrument: IN plays it from a cable (synths that only know
+      keys play the note as a key; per-note expression doesn't reach them), OUT sends on every
+      note it plays from keys, MIDI, tracks and NOTE IN, with voices of its own
+- [ ] SH-101 arpeggiator / sequencer notes out of its NOTE OUT (today only the keys it's given)
 
 ## M2f SP-1200 sampler ✅
 

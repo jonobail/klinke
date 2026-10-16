@@ -68,6 +68,8 @@ Only what reaches **MAIN • REC** is heard. A **MULT** splits one signal to sev
 
 Blue DIN-style jacks carry notes, not sound: patch **CHORD-8 → MOTION-15 → CHOIR-16** with NOTE
 cables, CHOIR-16's OUT into the mixer, and play CHORD-8 from the keys (white keys play its 8 pads).
+Every instrument has a NOTE IN (play it from a cable) and a NOTE OUT (passes on whatever it plays),
+so one keyboard or chord can drive several synths at once.
 
 ### Playing
 

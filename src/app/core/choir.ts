@@ -43,6 +43,7 @@ export const CHOIR_GEAR: GearDef = {
   jacks: [
     { id: 'notesIn', dir: 'in', signal: 'note', fx: 0.022, fy: 0.16, label: 'NOTE IN' },
     { id: 'out', dir: 'out', fx: 0.978, fy: 0.16 },
+    { id: 'notesOut', dir: 'out', signal: 'note', fx: 0.978, fy: 0.3, label: 'NOTE OUT' },
   ],
   params: [
     sel('mode', 'MODE', MODE_LABELS, 0),
