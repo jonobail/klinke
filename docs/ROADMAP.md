@@ -7,7 +7,7 @@ mockup (synth → overdrive → reverb → delay → 4ch mixer → MAIN • REC,
 Tick boxes as items land. Milestones are in build order: each one builds on the one before.
 Pure logic goes in `src/app/core/` with `node --test` coverage in `tests/`.
 
-**Status:** M0, M2, the MS-20, the Model D, the SH-101, the PS-3100, the MF-104, the 12 rack effects and the SP-1200 done, M1 mostly done. M3 audio recording and loops done; hosted on GitHub Pages.
+**Status:** M0, M2, the MS-20, the Model D, the SH-101, the PS-3100, the MF-104, the 12 rack effects and the SP-1200 done, M1 mostly done. M3 audio recording and loops done, M4 sequencing done; hosted on GitHub Pages.
 
 ---
 
@@ -289,8 +289,8 @@ armed and REC is on, snapping to a per-track grid (OFF, 1/4, 1/8, 1/16, 1/32). A
 
 - [x] MIDI tracks: instrument, live record (quantised), playback with mute / solo, piano roll
 - [ ] Sample-accurate MIDI playback (schedule on the audio clock instead of a 5 ms timer)
-- [ ] Velocity: record it from MIDI and play it into instruments that respond to it
-- [ ] Piano roll: box-select, copy / paste, velocity lane, zoom; replace (not only overdub) recording
+- [x] Velocity: record it from MIDI and play it into instruments that respond to it (M4)
+- [x] Piano roll: box-select, copy / paste, velocity lane, zoom; replace (not only overdub) recording (M4)
 - [ ] Songs in FILE export / import (today only the patch is exported)
 
 Audio tracks (done): each records MAIN MIX or any one gear's OUT. `recorder.ts` taps it with an
@@ -312,12 +312,24 @@ in `core/wav.ts` (tested).
 - [ ] Select, move and trim single takes; loop region on the ruler
 - [ ] Compensate output / input latency when recording against what you hear
 
-## M4 Sequencing
+## M4 Sequencing ✅
 
-- [ ] Note recording from the keyboard onto a track as MIDI-style events
-- [ ] Piano roll / step editor for synth parts
-- [ ] Quantize and swing
-- [ ] MIDI clock in / out
+Velocity runs end to end (MIDI in → recorded notes → playback → instruments that sense it, and NOTE
+OUT). Groove maths in `core/groove.ts`, editing in `core/editing.ts`, clock maths in
+`core/midi-clock.ts` (all tested); `midi-sync.ts` sends and follows the clock.
+
+- [x] Note recording from the keyboard onto a track as MIDI-style events: velocity from MIDI,
+      OVERDUB / REPLACE per track (REPLACE clears what the playhead passes while recording)
+- [x] Piano roll / step editor for synth parts: selection (shift-click, shift-drag box, SELECT
+      tool, Ctrl+A), transpose and nudge with the arrows, copy / paste / duplicate, velocity lane,
+      zoom, a ruler, and STEP entry (chords on one step, REST, TIE, BACK)
+- [x] Quantize and swing: QUANTIZE at 100 / 75 / 50 % on the selection or the whole track; SWING
+      50–75 % per track, applied on playback so the stored notes stay on the grid
+- [x] MIDI clock in / out: CLOCK OUT sends 24 PPQN with START / CONTINUE / STOP and song position;
+      SYNC EXT follows an input's start, stop, song position and tempo (MIDI badge → panel)
+- [ ] Try the clock against real hardware (tested only with a simulated MIDI port)
+- [ ] Copy / paste buttons for touch; record with swing; guard against a clock loop through one
+      device used for both input and output
 
 ## M5 Projects & persistence
 

@@ -128,8 +128,11 @@ export abstract class Unit {
 
 /** A unit you can play: the synths. */
 export interface Playable {
-  /** `step` is the note's distance from the keyboard's base C (the SP-1200 maps it to pads). */
-  noteOn(note: number, step: number): void;
+  /**
+   * `step` is the note's distance from the keyboard's base C (the SP-1200 maps it to pads).
+   * `velocity` is 0–1; gear that doesn't sense it can leave it out.
+   */
+  noteOn(note: number, step: number, velocity?: number): void;
   noteOff(note: number): void;
   allNotesOff(): void;
   /** Pitch wheel / MIDI pitch bend, -1…+1 (0 = centre). */

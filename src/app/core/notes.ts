@@ -56,7 +56,6 @@ export function recordedNote(
   return { id, note, start, length, velocity };
 }
 
-/** Notes whose start falls in [from, to), allowing for the loop wrapping (to < from). */
 /**
  * Notes starting in [from, to). `to < from` means the window wrapped round the loop; notes from
  * `loop` on are past the end of a looping track and never play.
@@ -65,6 +64,25 @@ export function notesStarting(notes: Note[], from: number, to: number, loop = In
   const live = notes.filter((n) => n.start < loop);
   if (to >= from) return live.filter((n) => n.start >= from && n.start < to);
   return live.filter((n) => n.start >= from || n.start < to);
+}
+
+/**
+ * REPLACE recording: drops the notes starting in [from, to) (wrapping like `notesStarting`),
+ * except those in `keep` (just recorded). Returns `notes` itself when nothing goes.
+ */
+export function clearWindow(
+  notes: Note[],
+  from: number,
+  to: number,
+  keep: ReadonlySet<string>,
+  loop = Infinity,
+): Note[] {
+  const gone = new Set(
+    notesStarting(notes, from, to, loop)
+      .filter((n) => !keep.has(n.id))
+      .map((n) => n.id),
+  );
+  return gone.size ? notes.filter((n) => !gone.has(n.id)) : notes;
 }
 
 /** Sorted by start, then pitch (the order they're stored in). */

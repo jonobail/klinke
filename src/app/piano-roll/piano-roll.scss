@@ -2,15 +2,16 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 240px;
+  height: 300px;
   background: var(--bg);
   border-top: 2px solid var(--green);
   color: var(--text);
 }
 header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 6px 12px;
   padding: 5px 12px;
   border-bottom: 2px solid var(--line);
   font: 11px/1 var(--font-pixel);
@@ -21,10 +22,14 @@ header {
   .inst {
     color: var(--cream);
   }
-  label {
+  label,
+  .group {
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+  .group {
+    gap: 2px;
   }
   select {
     border: none;
@@ -33,7 +38,18 @@ header {
     background: var(--panel);
     box-shadow: 0 0 0 1px var(--line);
   }
+  input[type='range'] {
+    width: 70px;
+    accent-color: var(--green);
+  }
+  .val {
+    min-width: 3ch;
+    font: 15px/1 var(--font-mono);
+    color: var(--cream);
+  }
   .hint {
+    flex: 1 1 0;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     font: 15px/1 var(--font-mono);
@@ -41,26 +57,81 @@ header {
   }
 }
 .tool {
-  margin-left: auto;
   padding: 4px 8px;
   border: none;
   font: 10px/1 var(--font-pixel);
   color: var(--text);
   background: var(--panel);
   cursor: pointer;
-  & + .tool {
-    margin-left: 0;
-  }
   &:hover {
     color: var(--accent);
+  }
+  &.on {
+    color: var(--bg);
+    background: var(--green);
+  }
+  &.push {
+    margin-left: auto;
   }
 }
 .scroller {
   flex: 1;
   min-height: 0;
-  display: flex;
   overflow: auto;
   outline: none;
+}
+.sheet {
+  display: flex;
+  flex-direction: column;
+}
+.top,
+.foot,
+.body {
+  display: flex;
+}
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+.foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  border-top: 2px solid var(--line);
+  .corner {
+    line-height: 40px;
+  }
+}
+.corner {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex: none;
+  width: 44px;
+  background: var(--bg);
+  font: 7px/14px var(--font-pixel);
+  text-align: center;
+  color: var(--muted);
+}
+.ruler {
+  position: relative;
+  flex: none;
+  height: 14px;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(90deg, #4a4e5a 2px, transparent 2px),
+    linear-gradient(90deg, #2c303a 1px, transparent 1px);
+  background-size:
+    var(--bar) 100%,
+    var(--beat) 50%;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  .ph {
+    background: var(--cream);
+  }
 }
 .keys {
   position: sticky;
@@ -105,6 +176,9 @@ header {
     var(--bar) 100%,
     var(--beat) 100%,
     100% var(--row);
+  &.selecting {
+    cursor: cell;
+  }
 }
 .lane-black {
   position: absolute;
@@ -124,7 +198,8 @@ header {
 .note {
   position: absolute;
   box-sizing: border-box;
-  background: var(--green);
+  // Quiet notes fade towards the grid.
+  background: color-mix(in srgb, var(--green) calc(35% + var(--vel, 1) * 65%), #1d2026);
   box-shadow:
     inset 0 0 0 1px #0d0e12,
     inset -4px 0 0 #3f9a5d;
@@ -147,6 +222,27 @@ header {
     cursor: ew-resize;
   }
 }
+.box {
+  position: absolute;
+  z-index: 2;
+  background: #ecdcb41f;
+  box-shadow: inset 0 0 0 1px var(--cream);
+  pointer-events: none;
+}
+.step-cur,
+.step-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.step-cur {
+  background: #6be08f1f;
+  box-shadow: inset 2px 0 0 var(--green);
+}
+.step-mark {
+  background: var(--green);
+}
 .ph {
   position: absolute;
   top: 0;
@@ -154,6 +250,37 @@ header {
   width: 2px;
   background: var(--cream);
   pointer-events: none;
+}
+.lane {
+  position: relative;
+  flex: none;
+  height: 40px;
+  background-color: #17191f;
+  background-image:
+    linear-gradient(90deg, #4a4e5a 2px, transparent 2px),
+    linear-gradient(90deg, #2c303a 1px, transparent 1px);
+  background-size:
+    var(--bar) 100%,
+    var(--beat) 100%;
+}
+.vel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  cursor: ns-resize;
+  touch-action: none;
+  i {
+    flex: 1;
+    background: color-mix(in srgb, var(--green) calc(35% + var(--vel, 1) * 65%), #1d2026);
+    box-shadow: inset 0 2px 0 var(--green);
+    pointer-events: none;
+  }
+  &.selected i {
+    background: var(--cream);
+    box-shadow: inset 0 2px 0 #b7a77e;
+  }
 }
 
 // Past the end of the track's (or the song's) loop: notes here don't play.
@@ -165,4 +292,10 @@ header {
   pointer-events: none;
   background: repeating-linear-gradient(-45deg, #0c0d11b3 0 6px, #14151bb3 6px 12px);
   border-left: 2px dashed var(--green);
+}
+
+@media (max-width: 760px) {
+  header .hint {
+    display: none;
+  }
 }

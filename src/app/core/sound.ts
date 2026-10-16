@@ -76,16 +76,32 @@ export const BASE_MAX = 84;
 export const shiftBase = (base: number, octaves: number) =>
   Math.min(BASE_MAX, Math.max(BASE_MIN, base + octaves * 12));
 
-/** One MIDI message → a note event, or null for anything else. */
+/** One MIDI message, parsed. */
 export type MidiEvent =
   | { type: 'on' | 'off'; note: number; velocity: number }
   /** Pitch bend, -1…+1. */
   | { type: 'bend'; value: number }
   /** Control change, value 0…1. */
-  | { type: 'cc'; controller: number; value: number };
+  | { type: 'cc'; controller: number; value: number }
+  /** System realtime: clock tick (24 a beat), start from the top, continue, stop. */
+  | { type: 'clock' | 'start' | 'continue' | 'stop' }
+  /** Song position pointer, in sixteenths from the top. */
+  | { type: 'position'; sixteenths: number };
 
-/** One MIDI message → a note, pitch-bend or control-change event, or null for anything else. */
+const REALTIME: Record<number, 'clock' | 'start' | 'continue' | 'stop'> = {
+  0xf8: 'clock',
+  0xfa: 'start',
+  0xfb: 'continue',
+  0xfc: 'stop',
+};
+
+/**
+ * One MIDI message → a note, pitch-bend, control-change, clock or song-position event, or null
+ * for anything else.
+ */
 export function parseMidi(data: ArrayLike<number>): MidiEvent | null {
+  if (REALTIME[data[0]]) return { type: REALTIME[data[0]] };
+  if (data[0] === 0xf2) return { type: 'position', sixteenths: ((data[2] ?? 0) << 7) | data[1] };
   const status = data[0] & 0xf0;
   const d1 = data[1];
   const d2 = data[2] ?? 0;

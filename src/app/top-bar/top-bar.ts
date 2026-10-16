@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { AudioEngine } from '../audio/audio-engine';
+import { MidiSync } from '../midi-sync';
 import { PatchStore } from '../patch-store';
 import { Recorder } from '../recorder';
 import { Transport } from '../transport';
@@ -21,11 +22,19 @@ export class TopBar {
   protected readonly transport = inject(Transport);
   protected readonly engine = inject(AudioEngine);
   protected readonly recorder = inject(Recorder);
+  protected readonly sync = inject(MidiSync);
   protected readonly midiTitle = computed(() => {
     const inputs = this.engine.midiInputs();
+    const outputs = this.engine.midiOutputs();
     switch (this.engine.midi()) {
       case 'ready':
-        return inputs.length ? `MIDI in: ${inputs.join(', ')}` : 'MIDI ready: plug in a controller';
+        if (!inputs.length && !outputs.length) return 'MIDI ready: plug in a controller';
+        return [
+          inputs.length ? `MIDI in: ${inputs.join(', ')}` : '',
+          outputs.length ? `MIDI out: ${outputs.join(', ')}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
       case 'insecure':
         return 'MIDI needs HTTPS or localhost';
       case 'unsupported':
@@ -59,6 +68,7 @@ export class TopBar {
       items: [
         { label: 'Unplug all cables', run: () => this.store.clearCables() },
         { label: 'Cancel cable', run: () => this.store.pendingJack.set(null) },
+        { label: 'MIDI clock & sync…', run: () => this.openMenu.set('MIDI') },
       ],
     },
     {
@@ -82,7 +92,8 @@ export class TopBar {
   }
 
   protected closeMenu(e: PointerEvent) {
-    if (!(e.target as Element).closest?.('.menus, .compact')) this.openMenu.set(null);
+    if (!(e.target as Element).closest?.('.menus, .compact, .midi, .midi-panel'))
+      this.openMenu.set(null);
   }
 
   protected bpmInput(e: Event) {
@@ -90,6 +101,10 @@ export class TopBar {
     const v = Number(el.value);
     if (Number.isFinite(v) && v > 0) this.transport.setBpm(v);
     el.value = String(this.transport.bpm());
+  }
+
+  protected pickPort(kind: 'input' | 'output', e: Event) {
+    this.sync.update({ [kind]: (e.target as HTMLSelectElement).value });
   }
 
   private exportPatch() {

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
   MIN_LENGTH,
   addNote,
+  clearWindow,
   gridBeats,
   moveNote,
   notesStarting,
@@ -111,4 +112,26 @@ test('on a looping track, notes record at their place in the loop and past-the-e
     notesStarting(notes, 3, 0.5, 4).map((x) => x.id),
     [],
   ); // wrapped, 'out' skipped
+});
+
+test("REPLACE recording clears the window it passes, keeping this pass's notes", () => {
+  const notes = [n('a', 0), n('b', 1), n('c', 2), n('d', 3)];
+  assert.deepEqual(
+    clearWindow(notes, 1, 3, new Set()).map((x) => x.id),
+    ['a', 'd'],
+  );
+  assert.deepEqual(
+    clearWindow(notes, 1, 3, new Set(['b'])).map((x) => x.id),
+    ['a', 'b', 'd'],
+  );
+  // Wrapping round a 4-beat loop: [3, 4) and [0, 1).
+  assert.deepEqual(
+    clearWindow(notes, 3, 1, new Set(), 4).map((x) => x.id),
+    ['b', 'c'],
+  );
+  // Nothing in the window: the same array back, so the track isn't touched.
+  assert.equal(clearWindow(notes, 0.5, 0.9, new Set()), notes);
+  // Notes past a looping track's end never play, so they aren't cleared either.
+  const long = [n('a', 1), n('z', 6)];
+  assert.equal(clearWindow(long, 3, 0.5, new Set(), 4), long);
 });

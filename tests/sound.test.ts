@@ -72,7 +72,19 @@ test('MIDI: note on, note off, and note-on with zero velocity is an off', () => 
   assert.deepEqual(parseMidi([0xe0, 0, 64]), { type: 'bend', value: 0 }); // centre
   assert.deepEqual(parseMidi([0xe0, 0, 0]), { type: 'bend', value: -1 });
   assert.ok((parseMidi([0xe0, 127, 127]) as { value: number }).value > 0.999);
-  assert.equal(parseMidi([0xf8]), null); // clock
+  assert.equal(parseMidi([0xf0, 0x7e, 0xf7]), null); // sysex
+  assert.equal(parseMidi([0xfe]), null); // active sensing
+  assert.equal(parseMidi([0xd0, 64]), null); // channel pressure
+});
+
+test('MIDI clock and song position messages are parsed', () => {
+  assert.deepEqual(parseMidi([0xf8]), { type: 'clock' });
+  assert.deepEqual(parseMidi([0xfa]), { type: 'start' });
+  assert.deepEqual(parseMidi([0xfb]), { type: 'continue' });
+  assert.deepEqual(parseMidi([0xfc]), { type: 'stop' });
+  assert.deepEqual(parseMidi([0xf2, 0, 0]), { type: 'position', sixteenths: 0 });
+  assert.deepEqual(parseMidi([0xf2, 0x10, 0x01]), { type: 'position', sixteenths: 144 });
+  assert.deepEqual(parseMidi([0xf2, 0x7f, 0x7f]), { type: 'position', sixteenths: 0x3fff });
 });
 
 test('reverb impulse is deterministic and decays', () => {

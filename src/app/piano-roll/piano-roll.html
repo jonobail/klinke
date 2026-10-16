@@ -10,68 +10,234 @@
         }
       </select>
     </label>
-    <span class="hint">
-      click to add · drag to move · drag the right edge to resize · double-click or Delete to remove
-      @if (t.arm) {
-        · REC records what you play
-      }
+    <span class="group" role="group" aria-label="Zoom">
+      <button
+        type="button"
+        class="tool"
+        aria-label="Zoom piano roll out"
+        title="Zoom out (Ctrl+wheel)"
+        (click)="zoom(-1)"
+      >
+        −
+      </button>
+      <button
+        type="button"
+        class="tool"
+        aria-label="Zoom piano roll in"
+        title="Zoom in (Ctrl+wheel)"
+        (click)="zoom(1)"
+      >
+        +
+      </button>
     </span>
-    <button type="button" class="tool" (click)="clear()">CLEAR</button>
-    <button type="button" class="tool close" aria-label="Close piano roll" (click)="close()">
-      ✕
-    </button>
-  </header>
-  <div class="scroller" #scroller tabindex="0" aria-label="Piano roll">
-    <div class="keys" [style.height.px]="height">
-      @for (n of rows; track n) {
-        <button
-          type="button"
-          class="pkey"
-          tabindex="-1"
-          [class.black]="isBlack(n)"
-          [style.height.px]="ROW"
-          [attr.aria-label]="'Play ' + n"
-          (pointerdown)="keyDown(n)"
-        >
-          {{ label(n) }}
-        </button>
-      }
-    </div>
-    <div
-      class="grid"
-      [style.width.px]="width"
-      [style.height.px]="height"
-      [style.--row.px]="ROW"
-      [style.--beat.px]="BEAT"
-      [style.--bar.px]="BAR"
-      (pointerdown)="gridDown($event)"
+    <button
+      type="button"
+      class="tool"
+      [class.on]="selectTool()"
+      [attr.aria-pressed]="selectTool()"
+      title="Drag on the grid to select (or hold Shift)"
+      (click)="selectTool.set(!selectTool())"
     >
-      @for (n of rows; track n) {
-        @if (isBlack(n)) {
-          <i class="lane-black" [style.top.px]="y(n)" [style.height.px]="ROW"></i>
+      SELECT
+    </button>
+    <span class="group">
+      <button
+        type="button"
+        class="tool"
+        [title]="'Quantize ' + (sel().size ? 'the selected notes' : 'every note') + ' to the grid'"
+        (click)="quantizeNow()"
+      >
+        QUANTIZE
+      </button>
+      <select aria-label="Quantize strength" (change)="setStrength($event)">
+        @for (s of STRENGTHS; track s) {
+          <option [value]="s" [selected]="s === strength()">{{ s }}%</option>
+        }
+      </select>
+    </span>
+    <label title="Swing: delays every other grid step (50% is straight)">
+      SWING
+      <input
+        type="range"
+        aria-label="Swing"
+        [min]="SWING_MIN"
+        [max]="SWING_MAX"
+        step="1"
+        [value]="t.swing"
+        (input)="setSwing($event)"
+        (change)="$any($event.target).blur()"
+      />
+      <span class="val">{{ t.swing }}%</span>
+    </label>
+    <button
+      type="button"
+      class="tool"
+      [attr.aria-label]="'Recording mode: ' + t.recMode"
+      [title]="
+        t.recMode === 'replace'
+          ? 'REPLACE: recording clears the notes it passes over'
+          : 'OVERDUB: recording adds to the notes'
+      "
+      (click)="toggleRecMode()"
+    >
+      {{ t.recMode === 'replace' ? 'REPLACE' : 'OVERDUB' }}
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [class.on]="step()"
+      [attr.aria-pressed]="step()"
+      title="Step entry: notes you play are written at the cursor"
+      (click)="toggleStep()"
+    >
+      STEP
+    </button>
+    @if (step()) {
+      <span class="group" role="group" aria-label="Step entry">
+        <button type="button" class="tool" title="Rest (→)" (click)="rest()">REST</button>
+        <button type="button" class="tool" title="Tie the last notes on (-)" (click)="tie()">
+          TIE
+        </button>
+        <button type="button" class="tool" title="Back a step (← or Backspace)" (click)="back()">
+          BACK
+        </button>
+      </span>
+    }
+    <span class="hint">
+      @if (step()) {
+        play notes to write them at the cursor · chords land together · click the ruler to move it
+        @if (transport.recording()) {
+          · paused while REC runs
+        }
+      } @else {
+        click to add · drag to move or resize · shift-click / shift-drag to select · arrows nudge ·
+        Ctrl+C / V (pastes after the copy) / D duplicate · Ctrl+wheel zooms
+        @if (t.arm) {
+          · REC records what you play
         }
       }
-      @for (b of bars; track b) {
-        <span class="bar-no" [style.left.px]="b * BAR">{{ b + 1 }}</span>
-      }
-      @for (n of t.notes; track n.id) {
+    </span>
+    <button type="button" class="tool push" (click)="clear()">CLEAR</button>
+    <button type="button" class="tool" aria-label="Close piano roll" (click)="close()">✕</button>
+  </header>
+  <div
+    class="scroller"
+    #scroller
+    tabindex="0"
+    aria-label="Piano roll"
+    [style.--row.px]="ROW"
+    [style.--beat.px]="beat()"
+    [style.--bar.px]="bar()"
+    (wheel)="wheel($event)"
+  >
+    <div class="sheet" [style.width.px]="KEYS + width()">
+      <div class="top">
+        <span class="corner"></span>
         <div
-          class="note"
-          [class.selected]="selected() === n.id"
-          [class.wide]="n.length * BEAT >= 16"
-          [style.left.px]="n.start * BEAT"
-          [style.top.px]="y(n.note)"
-          [style.width.px]="n.length * BEAT"
-          [style.height.px]="ROW"
-          [title]="n.note + ' · ' + n.start + ' + ' + n.length"
-          (pointerdown)="noteDown($event, n)"
-          (dblclick)="remove(n)"
-        ></div>
-      }
-      @if (loopEnd() * BEAT < width) {
-        <i class="beyond" [style.left.px]="loopEnd() * BEAT"></i>
-      }
-      <i class="ph" [style.left.px]="playhead()"></i>
+          class="ruler"
+          [style.width.px]="width()"
+          [title]="step() ? 'Click to move the step cursor' : 'Click to move the playhead'"
+          (pointerdown)="rulerDown($event)"
+        >
+          @for (b of bars; track b) {
+            <span class="bar-no" [style.left.px]="b * bar()">{{ b + 1 }}</span>
+          }
+          @if (step()) {
+            <i
+              class="step-mark"
+              [style.left.px]="cursor() * beat()"
+              [style.width.px]="stepLen() * beat()"
+            ></i>
+          }
+          <i class="ph" [style.left.px]="playhead()"></i>
+        </div>
+      </div>
+      <div class="body">
+        <div class="keys" [style.height.px]="height">
+          @for (n of rows; track n) {
+            <button
+              type="button"
+              class="pkey"
+              tabindex="-1"
+              [class.black]="isBlack(n)"
+              [style.height.px]="ROW"
+              [attr.aria-label]="'Play ' + n"
+              (pointerdown)="pianoKey(n)"
+            >
+              {{ label(n) }}
+            </button>
+          }
+        </div>
+        <div
+          class="grid"
+          [class.selecting]="selectTool()"
+          [style.width.px]="width()"
+          [style.height.px]="height"
+          (pointerdown)="gridDown($event)"
+        >
+          @for (n of rows; track n) {
+            @if (isBlack(n)) {
+              <i class="lane-black" [style.top.px]="y(n)" [style.height.px]="ROW"></i>
+            }
+          }
+          @if (step()) {
+            <i
+              class="step-cur"
+              [style.left.px]="cursor() * beat()"
+              [style.width.px]="stepLen() * beat()"
+            ></i>
+          }
+          @for (n of t.notes; track n.id) {
+            <div
+              class="note"
+              [class.selected]="sel().has(n.id)"
+              [class.wide]="n.length * beat() >= 16"
+              [style.left.px]="n.start * beat()"
+              [style.top.px]="y(n.note)"
+              [style.width.px]="n.length * beat()"
+              [style.height.px]="ROW"
+              [style.--vel]="n.velocity / 127"
+              [title]="noteTitle(n)"
+              (pointerdown)="noteDown($event, n)"
+              (dblclick)="remove(n)"
+            ></div>
+          }
+          @if (box(); as b) {
+            <i
+              class="box"
+              [style.left.px]="b.left"
+              [style.top.px]="b.top"
+              [style.width.px]="b.width"
+              [style.height.px]="b.height"
+            ></i>
+          }
+          @if (loopEnd() * beat() < width()) {
+            <i class="beyond" [style.left.px]="loopEnd() * beat()"></i>
+          }
+          <i class="ph" [style.left.px]="playhead()"></i>
+        </div>
+      </div>
+      <div class="foot">
+        <span class="corner">VEL</span>
+        <div class="lane" [style.width.px]="width()" aria-label="Velocity">
+          @for (n of t.notes; track n.id) {
+            <div
+              class="vel"
+              [class.selected]="sel().has(n.id)"
+              [style.left.px]="n.start * beat()"
+              [style.width.px]="velWidth(n)"
+              [style.--vel]="n.velocity / 127"
+              [title]="'Velocity ' + n.velocity"
+              (pointerdown)="velDown($event, n)"
+            >
+              <i [style.height.%]="(n.velocity / 127) * 100"></i>
+            </div>
+          }
+          @if (loopEnd() * beat() < width()) {
+            <i class="beyond" [style.left.px]="loopEnd() * beat()"></i>
+          }
+        </div>
+      </div>
     </div>
   </div>
 }

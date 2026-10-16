@@ -1,16 +1,20 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { GEAR, type GearKind, jackDef } from '../core/gear';
 import { type Cable, type Patch } from '../core/patch';
-import { BASE_MAX, BASE_MIN, noteName, parseMidi, shiftBase } from '../core/sound';
+import { BASE_MAX, BASE_MIN, type MidiEvent, noteName, parseMidi, shiftBase } from '../core/sound';
 import { PatchStore } from '../patch-store';
 import { Transport } from '../transport';
 import { type NoteEvent, type Playable, type Unit, isPlayable } from './unit';
-import { createUnit } from './units';
+import { createUnit, loadUnit } from './units';
 
 /** A note played by hand on a piece of gear: on (true) or off. */
-export type NoteListener = (gearId: string, note: number, on: boolean) => void;
+/** `velocity` is 0–1 on a note-on (0 on a note-off). */
+export type NoteListener = (gearId: string, note: number, on: boolean, velocity: number) => void;
 
 export type MidiStatus = 'off' | 'unsupported' | 'insecure' | 'denied' | 'ready';
+
+/** Hears an incoming MIDI message: the event, the input's name, its time (performance.now ms). */
+export type MidiListener = (msg: MidiEvent, input: string, time: number) => void;
 
 /**
  * Gear you play notes into: the synths, and the note effects (CHORD-8, MOTION-15) that turn
@@ -34,8 +38,11 @@ interface NoteLine {
   open: Map<number, number>;
 }
 
-/** Velocity of notes from the keys, MIDI and tracks as they leave an instrument's NOTE OUT. */
-const KEY_VELOCITY = 0.8;
+/**
+ * Velocity of notes played without one (the computer keyboard, the on-screen keys): 100 of 127,
+ * as drawn notes have.
+ */
+const KEY_VELOCITY = 100 / 127;
 /** The NOTE OUT jack on every instrument. */
 const NOTE_OUT = 'notesOut';
 
@@ -85,6 +92,8 @@ export class AudioEngine {
   constructor() {
     effect(() => {
       const patch = this.store.patch();
+      // Fetch the code for each kind on the floor now, so it's ready by the time audio starts.
+      for (const g of patch.gear) loadUnit(g.kind).catch(() => {});
       if (this.ctx) this.sync(patch);
     });
     // Selecting a synth hands it the keyboard, and it keeps it after the selection clears.
@@ -199,13 +208,12 @@ export class AudioEngine {
     return only ?? this.keyboardSynth();
   }
 
-  /** Neither synth senses velocity, so MIDI velocity is ignored. */
   /**
-   * Plays a note. `fromTrack` marks notes played back from a MIDI track: they don't take the
-   * keyboard, aren't reported to note listeners (so they aren't recorded again) and are tracked
-   * apart from the same key held by hand.
+   * Plays a note at `velocity` (0–1). `fromTrack` marks notes played back from a MIDI track: they
+   * don't take the keyboard, aren't reported to note listeners (so they aren't recorded again)
+   * and are tracked apart from the same key held by hand.
    */
-  noteOn(note: number, only?: string, fromTrack = false) {
+  noteOn(note: number, only?: string, fromTrack = false, velocity = KEY_VELOCITY) {
     this.start();
     const id = this.target(only);
     if (!id) return;
@@ -214,10 +222,10 @@ export class AudioEngine {
     if (this.sounding.has(key)) this.noteOff(note, only, fromTrack);
     this.sounding.set(key, id);
     const unit = this.units.get(id);
-    if (isPlayable(unit)) unit.noteOn(note, note - this.base());
+    if (isPlayable(unit)) unit.noteOn(note, note - this.base(), velocity);
     this.hold(id, note, true);
-    this.thru(id, `key:${key}`, { type: 'on', voice: 0, note, velocity: KEY_VELOCITY });
-    if (!fromTrack) for (const l of this.listeners) l(id, note, true);
+    this.thru(id, `key:${key}`, { type: 'on', voice: 0, note, velocity });
+    if (!fromTrack) for (const l of this.listeners) l(id, note, true, velocity);
   }
 
   noteOff(note: number, only?: string, fromTrack = false) {
@@ -229,7 +237,7 @@ export class AudioEngine {
     if (isPlayable(unit)) unit.noteOff(note);
     this.hold(id, note, false);
     this.thru(id, `key:${key}`, { type: 'off', voice: 0, note });
-    if (!fromTrack) for (const l of this.listeners) l(id, note, false);
+    if (!fromTrack) for (const l of this.listeners) l(id, note, false, 0);
   }
 
   private readonly listeners = new Set<NoteListener>();
@@ -305,7 +313,16 @@ export class AudioEngine {
     for (const g of patch.gear) {
       let unit = this.units.get(g.id);
       if (!unit) {
-        unit = createUnit(g.kind, ctx);
+        const made = createUnit(g.kind, ctx);
+        if (!made) {
+          // Its code is still loading: sync again once it's here.
+          loadUnit(g.kind).then(
+            () => this.ctx && this.sync(untracked(this.store.patch)),
+            () => this.store.flash(`couldn't load ${GEAR[g.kind].label}`),
+          );
+          continue;
+        }
+        unit = made;
         const id = g.id;
         unit.saveText = (key, value) => this.store.setText(id, key, value);
         unit.setTempo(untracked(this.transport.bpm));
@@ -429,7 +446,7 @@ export class AudioEngine {
     const n = counts.get(e.note) ?? 0;
     if (e.type === 'on') {
       counts.set(e.note, n + 1);
-      unit.noteOn(e.note, e.note - this.base());
+      unit.noteOn(e.note, e.note - this.base(), e.velocity);
     } else if (n > 0) {
       // Two voices on the same note: the key comes up when the last one lets go.
       if (n > 1) counts.set(e.note, n - 1);
@@ -591,27 +608,48 @@ export class AudioEngine {
 
   // ── Web MIDI ──────────────────────────────────────────
 
+  /** MIDI output ports by name (for clock out), kept up to date as devices come and go. */
+  readonly midiOutputs = signal<string[]>([]);
+  /** The MIDI access once granted, for sending (see `MidiSync`). */
+  readonly midiAccess = signal<MIDIAccess | null>(null);
+  private readonly midiListeners = new Set<MidiListener>();
+
+  /** Hears every incoming MIDI message, clock included; returns an unsubscribe. */
+  onMidi(fn: MidiListener): () => void {
+    this.midiListeners.add(fn);
+    return () => this.midiListeners.delete(fn);
+  }
+
   private async connectMidi() {
     if (!('requestMIDIAccess' in navigator)) return this.midi.set('unsupported');
     if (!isSecureContext) return this.midi.set('insecure');
     try {
-      const access = await navigator.requestMIDIAccess();
+      const access = await navigator.requestMIDIAccess({ sysex: false });
       const attach = () => {
         const names: string[] = [];
         access.inputs.forEach((input) => {
+          if (input.state === 'disconnected') return;
           names.push(input.name ?? 'MIDI input');
           input.onmidimessage = (e) => {
             const msg = e.data && parseMidi(e.data);
-            if (msg?.type === 'on') this.noteOn(msg.note);
-            else if (msg?.type === 'off') this.noteOff(msg.note);
-            else if (msg?.type === 'bend') this.pitchBend(msg.value);
-            else if (msg?.type === 'cc' && msg.controller === 1) this.modWheel(msg.value);
+            if (!msg) return;
+            if (msg.type === 'on') this.noteOn(msg.note, undefined, false, msg.velocity / 127);
+            else if (msg.type === 'off') this.noteOff(msg.note);
+            else if (msg.type === 'bend') this.pitchBend(msg.value);
+            else if (msg.type === 'cc' && msg.controller === 1) this.modWheel(msg.value);
+            for (const fn of this.midiListeners) fn(msg, input.name ?? 'MIDI input', e.timeStamp);
           };
         });
         this.midiInputs.set(names);
+        const outs: string[] = [];
+        access.outputs.forEach((o) => {
+          if (o.state !== 'disconnected') outs.push(o.name ?? 'MIDI output');
+        });
+        this.midiOutputs.set(outs);
       };
       attach();
       access.onstatechange = attach;
+      this.midiAccess.set(access);
       this.midi.set('ready');
     } catch {
       this.midi.set('denied');

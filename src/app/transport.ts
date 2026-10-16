@@ -1,4 +1,5 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { clampSwing } from './core/groove';
 import { DEFAULT_GRID, type Grid, GRIDS, type Note, parseNotes } from './core/notes';
 import {
   BEATS_PER_BAR,
@@ -41,6 +42,10 @@ export interface Track {
   takes: Take[];
   /** Bars this track repeats over (its first N bars, again and again); 0 = no loop of its own. */
   loop: number;
+  /** MIDI tracks: swing in percent (50 = straight … 75), applied on playback (`core/groove.ts`). */
+  swing: number;
+  /** MIDI recording: OVERDUB adds to the notes, REPLACE clears what the pass records over. */
+  recMode: 'overdub' | 'replace';
 }
 
 const SONG_KEY = 'klinke.song.v1';
@@ -58,6 +63,8 @@ const track = (id: string, name: string, over: Partial<Track> = {}): Track => ({
   solo: false,
   takes: [],
   loop: 0,
+  swing: 50,
+  recMode: 'overdub',
   ...over,
 });
 
@@ -182,10 +189,26 @@ export class Transport {
 
   setBpm(bpm: number) {
     // Re-anchor so the position doesn't jump when the tempo changes mid-play.
-    this.startBeat = this.beats();
+    this.startBeat = this.beatNow();
     this.startTime = performance.now();
     this.bpm.set(clampBpm(bpm));
     if (this.playing()) this.epoch.update((n) => n + 1);
+  }
+
+  /** Where the song clock was last anchored: a beat and its performance.now() time. */
+  anchor(): { beat: number; time: number } {
+    return { beat: this.startBeat, time: this.startTime };
+  }
+
+  /**
+   * External MIDI clock: puts the song at `beat` as of `time` (a performance.now() time), for
+   * keeping in step with the clock's ticks. A nudge, not a jump: the epoch doesn't change.
+   */
+  syncTo(beat: number, time = performance.now()) {
+    const b = ((beat % this.loopBeats()) + this.loopBeats()) % this.loopBeats();
+    this.startBeat = b;
+    this.startTime = time;
+    if (!this.playing()) this.beats.set(b);
   }
 
   // ── Tracks ────────────────────────────────────────────
@@ -244,6 +267,8 @@ export class Transport {
             solo: !!t.solo,
             takes: parseTakes(t.takes),
             loop: clampLoop(t.loop ?? 0, true),
+            swing: clampSwing(t.swing),
+            recMode: t.recMode === 'replace' ? 'replace' : 'overdub',
           }),
         );
       if (tracks.length) this.tracks.set(tracks);
@@ -263,7 +288,8 @@ export class Transport {
       this.loopBeats(),
     );
     this.beats.set(next);
-    if (next < prev) this.epoch.update((n) => n + 1); // round the loop
+    // Round the loop (a clock-sync nudge back a hair isn't one).
+    if (prev - next > this.loopBeats() / 2) this.epoch.update((n) => n + 1);
     this.frame = requestAnimationFrame(this.tick);
   };
 }

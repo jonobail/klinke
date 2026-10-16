@@ -103,26 +103,39 @@
 
 <div class="counter">
   <output class="pos" aria-label="Song position">{{ transport.position() }}</output>
-  <label class="bpm">
+  <label
+    class="bpm"
+    [class.ext]="sync.external()"
+    [title]="sync.external() ? 'Tempo follows MIDI clock in' : ''"
+  >
     <input
       type="number"
       min="40"
       max="300"
       step="0.1"
-      aria-label="Tempo in BPM"
+      [attr.aria-label]="sync.external() ? 'Tempo from MIDI clock, in BPM' : 'Tempo in BPM'"
       [value]="transport.bpm()"
+      [disabled]="sync.external()"
       (change)="bpmInput($event)"
       (keydown)="$event.stopPropagation()"
     />
-    BPM
+    {{ sync.external() ? 'EXT' : 'BPM' }}
   </label>
   <span class="meter-sig">4/4</span>
 </div>
 
 <div class="actions">
-  <span class="midi" [class.ready]="engine.midiInputs().length > 0" [title]="midiTitle()"
-    >MIDI</span
+  <button
+    type="button"
+    class="midi"
+    [class.ready]="engine.midiInputs().length > 0 || engine.midiOutputs().length > 0"
+    [class.open]="openMenu() === 'MIDI'"
+    [attr.aria-expanded]="openMenu() === 'MIDI'"
+    [title]="midiTitle() + ' (click for clock & sync)'"
+    (click)="toggleMenu('MIDI')"
   >
+    MIDI{{ sync.external() ? ' EXT' : '' }}{{ sync.settings().clockOut ? ' ▸CLK' : '' }}
+  </button>
   <button
     type="button"
     class="audio"
@@ -165,3 +178,96 @@
     }
   </button>
 </div>
+
+@if (openMenu() === 'MIDI') {
+  <section class="midi-panel" role="dialog" aria-label="MIDI clock and sync">
+    <header>
+      <h2>MIDI CLOCK</h2>
+      <button type="button" class="close" aria-label="Close" (click)="openMenu.set(null)">×</button>
+    </header>
+    <p class="status">{{ midiTitle() }}</p>
+
+    <fieldset>
+      <legend>SYNC</legend>
+      <div class="seg" role="group" aria-label="Sync source">
+        <button
+          type="button"
+          [class.on]="!sync.external()"
+          [attr.aria-pressed]="!sync.external()"
+          (click)="sync.update({ sync: 'internal' })"
+        >
+          INT
+        </button>
+        <button
+          type="button"
+          [class.on]="sync.external()"
+          [attr.aria-pressed]="sync.external()"
+          (click)="sync.update({ sync: 'external' })"
+        >
+          EXT
+        </button>
+      </div>
+      <label>
+        <span>FROM</span>
+        <select (change)="pickPort('input', $event)">
+          <option value="" [selected]="!sync.settings().input">Any input</option>
+          @for (name of engine.midiInputs(); track name) {
+            <option [value]="name" [selected]="name === sync.settings().input">{{ name }}</option>
+          }
+          @if (sync.settings().input && !engine.midiInputs().includes(sync.settings().input)) {
+            <option [value]="sync.settings().input" selected>
+              {{ sync.settings().input }} (not connected)
+            </option>
+          }
+        </select>
+      </label>
+      <p class="hint">
+        EXT: the song follows START / STOP / song position and the tempo of MIDI clock in.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>CLOCK OUT</legend>
+      <div class="seg" role="group" aria-label="Send MIDI clock">
+        <button
+          type="button"
+          [class.on]="!sync.settings().clockOut"
+          [attr.aria-pressed]="!sync.settings().clockOut"
+          (click)="sync.update({ clockOut: false })"
+        >
+          OFF
+        </button>
+        <button
+          type="button"
+          [class.on]="sync.settings().clockOut"
+          [attr.aria-pressed]="sync.settings().clockOut"
+          (click)="sync.update({ clockOut: true })"
+        >
+          ON
+        </button>
+      </div>
+      @if (engine.midiOutputs().length > 1 || sync.settings().output) {
+        <label>
+          <span>TO</span>
+          <select (change)="pickPort('output', $event)">
+            <option value="" [selected]="!sync.settings().output">All outputs</option>
+            @for (name of engine.midiOutputs(); track name) {
+              <option [value]="name" [selected]="name === sync.settings().output">
+                {{ name }}
+              </option>
+            }
+            @if (sync.settings().output && !engine.midiOutputs().includes(sync.settings().output)) {
+              <option [value]="sync.settings().output" selected>
+                {{ sync.settings().output }} (not connected)
+              </option>
+            }
+          </select>
+        </label>
+      } @else if (engine.midiOutputs().length === 1) {
+        <p class="hint">To {{ engine.midiOutputs()[0] }}</p>
+      } @else {
+        <p class="hint">No MIDI outputs yet.</p>
+      }
+    </fieldset>
+  </section>
+}

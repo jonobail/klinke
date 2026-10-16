@@ -53,6 +53,8 @@ interface Channel {
 const CACHE_SIZE = 48;
 /** How long "Sample is good" and friends stay on the display. */
 const MESSAGE_MS = 2500;
+/** A hit at this velocity (100 of 127) or harder plays at the pad's full level; softer is quieter. */
+const FULL_VELOCITY = 100 / 127;
 
 export class Sp1200Unit extends Unit implements Playable {
   private p: Params = {};
@@ -133,9 +135,10 @@ export class Sp1200Unit extends Unit implements Playable {
     return `${BANKS[stepIndex(this.p['bank'], 4)]}${stepIndex(this.p['pad'], PADS) + 1}`;
   }
 
-  noteOn(_note: number, step: number) {
+  noteOn(_note: number, step: number, velocity = 1) {
     const pad = padForStep(step);
-    if (pad >= 0) this.trigger(`${BANKS[stepIndex(this.p['bank'], 4)]}${pad + 1}`);
+    const hit = Math.min(1, velocity / FULL_VELOCITY);
+    if (pad >= 0) this.trigger(`${BANKS[stepIndex(this.p['bank'], 4)]}${pad + 1}`, hit);
   }
 
   /** Pads are one-shots: lifting the key doesn't stop the sound. */
@@ -147,7 +150,7 @@ export class Sp1200Unit extends Unit implements Playable {
     for (const ch of this.channels) this.cut(ch);
   }
 
-  private trigger(id: string) {
+  private trigger(id: string, hit = 1) {
     const sound = this.sounds.get(id);
     if (!sound) return;
     const p = this.p;
@@ -165,7 +168,7 @@ export class Sp1200Unit extends Unit implements Playable {
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
     const gain = this.ctx.createGain();
-    const level = faderGain(p[`lvl${id}`]);
+    const level = faderGain(p[`lvl${id}`]) * hit;
     gain.gain.setValueAtTime(level, t);
     // A decay shorter than the sound fades it 60 dB over that time.
     if (Number.isFinite(decay)) gain.gain.setTargetAtTime(0, t, decay / 6.9);

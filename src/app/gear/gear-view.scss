@@ -14,6 +14,11 @@
 :host(.preview) {
   pointer-events: none;
 }
+// Stands in for a panel while its code loads.
+.loading {
+  flex: 1;
+  background: #1e1f21;
+}
 
 .led {
   width: 8px;

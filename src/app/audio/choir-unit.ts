@@ -32,7 +32,7 @@ import { type NoteEvent, type Params, type Playable, Unit, glide } from './unit'
 /** One worklet module load per audio context. */
 const modules = new WeakMap<BaseAudioContext, Promise<void>>();
 
-/** The keyboard plays at this velocity (Playable notes carry none). */
+/** Velocity for a key played without one. */
 const KEY_VELOCITY = 0.75;
 /** How the bender bends: ±2 semitones. */
 const WHEEL_RANGE = 2;
@@ -205,8 +205,8 @@ export class ChoirUnit extends Unit implements Playable {
   // Keyboard voices and NOTE IN voices live in separate id spaces (odd and even), so a key and a
   // cable voice with the same number never collide.
 
-  noteOn(note: number) {
-    this.start(note * 2 + 1, note, KEY_VELOCITY, 0, KEY_VELOCITY, 0.5);
+  noteOn(note: number, _step = 0, velocity = KEY_VELOCITY) {
+    this.start(note * 2 + 1, note, velocity, 0, velocity, 0.5);
   }
 
   noteOff(note: number) {

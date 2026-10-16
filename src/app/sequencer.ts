@@ -1,6 +1,7 @@
 import { Injectable, effect, inject, untracked } from '@angular/core';
 import { AudioEngine } from './audio/audio-engine';
-import { addNote, notesStarting, recordedNote } from './core/notes';
+import { swungNotes } from './core/groove';
+import { addNote, clearWindow, notesStarting, recordedNote } from './core/notes';
 import { PatchStore } from './patch-store';
 import { Transport, type Track } from './transport';
 
@@ -24,8 +25,8 @@ export class Sequencer {
   private elapsed = 0;
   private offs: { at: number; instrument: string; note: number }[] = [];
 
-  // Recording: key-down position per track and note
-  private readonly down = new Map<string, number>();
+  // Recording: key-down position and velocity (1–127) per track and note
+  private readonly down = new Map<string, { at: number; velocity: number }>();
   private noteIds = 0;
   /**
    * Notes recorded in this pass round the loop. Their start may have snapped forward onto a grid
@@ -43,7 +44,7 @@ export class Sequencer {
     effect(() => {
       if (!this.transport.recording()) untracked(() => this.finishHeld());
     });
-    this.engine.listen((gear, note, on) => this.heard(gear, note, on));
+    this.engine.listen((gear, note, on, velocity) => this.heard(gear, note, on, velocity));
   }
 
   // ── Recording ─────────────────────────────────────────
@@ -55,19 +56,28 @@ export class Sequencer {
       .filter((t) => t.type === 'midi' && t.arm && t.instrument === gear);
   }
 
-  private heard(gear: string, note: number, on: boolean) {
+  private heard(gear: string, note: number, on: boolean, velocity: number) {
     const beat = this.transport.beatNow();
+    const vel = Math.max(1, Math.min(127, Math.round(velocity * 127)));
     for (const t of this.recordingTracks(gear)) {
       const key = `${t.id}:${note}`;
-      if (on) this.down.set(key, beat);
-      else if (this.down.has(key)) this.write(t, note, this.down.get(key)!, beat, key);
+      const held = this.down.get(key);
+      if (on) this.down.set(key, { at: beat, velocity: vel });
+      else if (held) this.write(t, note, held, beat, key);
     }
   }
 
-  private write(t: Track, note: number, from: number, to: number, key: string) {
+  private write(
+    t: Track,
+    note: number,
+    held: { at: number; velocity: number },
+    to: number,
+    key: string,
+  ) {
     this.down.delete(key);
     const id = `r${Date.now().toString(36)}${this.noteIds++}`;
-    const n = recordedNote(id, note, from, to, t.grid, 100, this.transport.trackLoop(t));
+    const loop = this.transport.trackLoop(t);
+    const n = recordedNote(id, note, held.at, to, t.grid, held.velocity, loop);
     this.fresh.add(n.id);
     this.transport.updateTrack(t.id, (tr) => ({ notes: addNote(tr.notes, n) }));
   }
@@ -75,10 +85,10 @@ export class Sequencer {
   private finishHeld() {
     this.fresh.clear(); // out of REC: everything recorded is ordinary track data now
     const beat = this.transport.beatNow();
-    for (const [key, from] of this.down) {
+    for (const [key, held] of this.down) {
       const [id, note] = key.split(':');
       const t = this.transport.tracks().find((tr) => tr.id === id);
-      if (t) this.write(t, Number(note), from, beat, key);
+      if (t) this.write(t, Number(note), held, beat, key);
     }
     this.down.clear();
   }
@@ -110,6 +120,7 @@ export class Sequencer {
       return;
     }
     this.elapsed += step;
+    this.replace(now); // before `fresh` empties at the loop point
     if (now < this.last) this.fresh.clear(); // round the loop again
 
     // Note-offs first, so a repeated note re-triggers cleanly.
@@ -128,12 +139,27 @@ export class Sequencer {
       const from = this.last % loop;
       const to = now % loop;
       if (to < from) for (const n of t.notes) this.fresh.delete(n.id); // its loop came round
-      for (const n of notesStarting(t.notes, from, to, loop)) {
+      // Swing moves when a note plays, not where it's stored.
+      for (const n of notesStarting(swungNotes(t.notes, t.grid, t.swing, loop), from, to)) {
         if (this.fresh.has(n.id)) continue;
-        this.engine.noteOn(n.note, t.instrument, true);
+        this.engine.noteOn(n.note, t.instrument, true, n.velocity / 127);
         this.offs.push({ at: this.elapsed + n.length, instrument: t.instrument, note: n.note });
       }
     }
     this.last = now;
+  }
+
+  /**
+   * REPLACE recording: as the playhead moves over an armed replace-mode track, the notes already
+   * there go (the ones recorded this pass stay).
+   */
+  private replace(now: number) {
+    if (!this.transport.recording()) return;
+    for (const t of this.transport.tracks()) {
+      if (t.type !== 'midi' || !t.arm || t.recMode !== 'replace') continue;
+      const loop = this.transport.trackLoop(t);
+      const notes = clearWindow(t.notes, this.last % loop, now % loop, this.fresh, loop);
+      if (notes !== t.notes) this.transport.updateTrack(t.id, () => ({ notes }));
+    }
   }
 }

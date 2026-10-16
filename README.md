@@ -26,7 +26,9 @@ sound is generated live in the browser; there is no server.
 - **Effects:** overdrive, delay, reverb and filter pedals, the MF-104 analog delay, and twelve
   rack processors (H949, Delta-T, Model 200, PCM-70, PCM-80, DPS-D7 / M7 / R7 / V55 / V77,
   E1010, REV5).
-- **MIDI tracks** with live quantised recording and a piano roll.
+- **MIDI tracks** with live quantised recording (overdub or replace, with velocity), a piano roll
+  with step entry, selection, copy / paste and a velocity lane, plus quantize and swing.
+- **MIDI clock** out to other gear, or follow an external clock (start, stop, song position, tempo).
 - **Loops** for the whole song and for each track (1–16 bars), so a one-bar beat can repeat under
   a longer part.
 - **Audio tracks** that record the main mix or any single piece of gear, with waveforms and
@@ -79,7 +81,13 @@ across any on-screen keyboard.
 - **MIDI tracks:** switch a track to **MIDI** and pick its instrument. Arm it (**R**) and press
   **REC** to record notes, quantised to the track's grid (default 1/16). Click the lane to open
   the piano roll: click to add a note, drag to move, drag the right edge to resize,
-  double-click or **Delete** to remove.
+  double-click or **Delete** to remove. Shift-click or shift-drag selects; the arrows transpose
+  and nudge; **Ctrl+C / V / D** copy, paste and duplicate; drag the VEL bars for velocity.
+  **QUANTIZE** snaps the selection (or the track), **SWING** delays the off-beats, and
+  **OVERDUB / REPLACE** sets how recording treats notes already there. **STEP** writes each note
+  or chord you play at the cursor and moves on a step (REST, TIE, BACK).
+- **MIDI clock:** click the **MIDI** badge to send clock to your other gear (**CLOCK OUT**) or to
+  follow theirs (**SYNC EXT**: their start, stop, song position and tempo).
 - **Audio tracks:** choose what the track records: **MAIN MIX** or one piece of gear's OUT. Arm
   it and press **REC**; the take appears with its waveform and plays back in time with the song.
   Mute (**M**) and solo (**S**) apply. **✕** deletes a track's takes. Wrapping round the loop or

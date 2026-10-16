@@ -161,16 +161,122 @@ h1 {
     border: none;
   }
 }
-.midi {
+.actions .midi {
   align-self: center;
+  height: auto;
   padding: 6px 8px;
   font-size: 10px;
   color: var(--muted);
+  background: none;
   box-shadow: inset 0 0 0 2px var(--line);
-  cursor: help;
+  white-space: nowrap;
   &.ready {
     color: var(--green);
     box-shadow: inset 0 0 0 2px #1f3a2a;
+  }
+  &:hover,
+  &.open {
+    background: var(--panel);
+  }
+}
+.bpm {
+  white-space: nowrap;
+}
+.bpm.ext {
+  color: var(--cream);
+  input:disabled {
+    color: inherit;
+    opacity: 1;
+  }
+}
+
+// MIDI clock & sync settings, opened from the MIDI badge (or the menu on narrow screens).
+.midi-panel {
+  // Fixed, so the bar scrolling sideways on a phone can't clip it.
+  position: fixed;
+  top: 70px;
+  right: 12px;
+  z-index: 20;
+  width: min(320px, calc(100vw - 16px));
+  max-height: calc(100dvh - 80px);
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--panel);
+  box-shadow:
+    0 0 0 2px var(--line),
+    6px 6px 0 #00000066;
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  h2 {
+    margin: 0;
+    font: inherit;
+  }
+  .close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    font: 20px/1 var(--font-mono);
+  }
+  .status,
+  .hint {
+    margin: 8px 0 0;
+    font: 14px/1.3 var(--font-mono);
+    letter-spacing: 0;
+    color: var(--muted);
+  }
+  fieldset {
+    min-width: 0;
+    margin: 12px 0 0;
+    padding: 10px;
+    border: none;
+    box-shadow: inset 0 0 0 2px var(--line);
+  }
+  legend {
+    padding: 0;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .seg {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    button {
+      flex: 1;
+      min-height: 36px;
+      border: none;
+      background: var(--bg);
+      &.on {
+        color: #1b1d24;
+        background: var(--cream);
+      }
+      &:focus-visible {
+        outline: 2px solid var(--accent);
+      }
+    }
+  }
+  label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    font-size: 10px;
+  }
+  select {
+    flex: 1;
+    min-width: 0;
+    min-height: 36px;
+    padding: 0 6px;
+    border: none;
+    color: var(--text);
+    background: var(--bg);
+    font: 14px/1 var(--font-mono);
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+    }
   }
 }
 .audio {
@@ -274,6 +380,10 @@ h1 {
   .logo {
     width: 26px;
     height: 26px;
+  }
+  .midi-panel {
+    top: 58px;
+    right: 8px;
   }
   h1,
   .meter-sig,

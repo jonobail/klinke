@@ -2,21 +2,6 @@
 
 import { type DeviceKind, type GearKind } from '../core/gear';
 import { driveCurve, expMap, faderGain, mixSends, panFor, reverbImpulse } from '../core/sound';
-import { ChoirUnit } from './choir-unit';
-import { ChordsUnit } from './chords-unit';
-import { DEVICE_UNITS } from './devices';
-import { Mf104Unit } from './mf104-unit';
-import { ModelDUnit } from './modeld-unit';
-import { MotionUnit } from './motion-unit';
-import { Ms20Unit } from './ms20-unit';
-import { Ps3100Unit } from './ps3100-unit';
-import { Sh101Unit } from './sh101-unit';
-import { Sp1200Unit } from './sp1200-unit';
-import { Tb303Unit } from './tb303-unit';
-import { Juno60Unit } from './juno60-unit';
-import { Jupiter8Unit } from './jupiter8-unit';
-import { Sh2Unit } from './sh2-unit';
-import { Jx3pUnit } from './jx3p-unit';
 import { type Params, Unit, glide } from './unit';
 
 // ── Pedals ──────────────────────────────────────────────
@@ -256,36 +241,11 @@ class OutputUnit extends Unit {
   }
 }
 
-export function createUnit(kind: GearKind, ctx: AudioContext): Unit {
+/**
+ * A unit for `kind`, or null while its code is still loading (see `loadUnit`).
+ */
+export function createUnit(kind: GearKind, ctx: AudioContext): Unit | null {
   switch (kind) {
-    case 'ms20':
-      return new Ms20Unit(ctx);
-    case 'modelD':
-      return new ModelDUnit(ctx);
-    case 'sh101':
-      return new Sh101Unit(ctx);
-    case 'ps3100':
-      return new Ps3100Unit(ctx);
-    case 'mf104':
-      return new Mf104Unit(ctx);
-    case 'sp1200':
-      return new Sp1200Unit(ctx);
-    case 'tb303':
-      return new Tb303Unit(ctx);
-    case 'juno60':
-      return new Juno60Unit(ctx);
-    case 'jupiter8':
-      return new Jupiter8Unit(ctx);
-    case 'sh2':
-      return new Sh2Unit(ctx);
-    case 'jx3p':
-      return new Jx3pUnit(ctx);
-    case 'chords':
-      return new ChordsUnit(ctx);
-    case 'motion':
-      return new MotionUnit(ctx);
-    case 'choir':
-      return new ChoirUnit(ctx);
     case 'mult':
       return new MultUnit(ctx);
     case 'overdrive':
@@ -300,7 +260,67 @@ export function createUnit(kind: GearKind, ctx: AudioContext): Unit {
       return new MixerUnit(ctx);
     case 'output':
       return new OutputUnit(ctx);
-    default:
-      return DEVICE_UNITS[kind as DeviceKind](ctx);
+    default: {
+      const make = loaded.get(kind);
+      return make ? make(ctx) : null;
+    }
   }
+}
+
+type Make = (ctx: AudioContext) => Unit;
+
+/**
+ * The bigger units (synths, note effects, the MF-104, the rack) load on demand as their own
+ * chunks, so the first page load doesn't carry gear the patch doesn't use.
+ */
+const LOADERS: Partial<Record<GearKind, () => Promise<Make>>> = {
+  ms20: () => import('./ms20-unit').then((m) => (ctx) => new m.Ms20Unit(ctx)),
+  modelD: () => import('./modeld-unit').then((m) => (ctx) => new m.ModelDUnit(ctx)),
+  sh101: () => import('./sh101-unit').then((m) => (ctx) => new m.Sh101Unit(ctx)),
+  ps3100: () => import('./ps3100-unit').then((m) => (ctx) => new m.Ps3100Unit(ctx)),
+  mf104: () => import('./mf104-unit').then((m) => (ctx) => new m.Mf104Unit(ctx)),
+  sp1200: () => import('./sp1200-unit').then((m) => (ctx) => new m.Sp1200Unit(ctx)),
+  tb303: () => import('./tb303-unit').then((m) => (ctx) => new m.Tb303Unit(ctx)),
+  juno60: () => import('./juno60-unit').then((m) => (ctx) => new m.Juno60Unit(ctx)),
+  jupiter8: () => import('./jupiter8-unit').then((m) => (ctx) => new m.Jupiter8Unit(ctx)),
+  sh2: () => import('./sh2-unit').then((m) => (ctx) => new m.Sh2Unit(ctx)),
+  jx3p: () => import('./jx3p-unit').then((m) => (ctx) => new m.Jx3pUnit(ctx)),
+  chords: () => import('./chords-unit').then((m) => (ctx) => new m.ChordsUnit(ctx)),
+  motion: () => import('./motion-unit').then((m) => (ctx) => new m.MotionUnit(ctx)),
+  choir: () => import('./choir-unit').then((m) => (ctx) => new m.ChoirUnit(ctx)),
+};
+
+const BUILT_IN = new Set<GearKind>([
+  'mult',
+  'overdrive',
+  'delay',
+  'reverb',
+  'filter',
+  'mixer',
+  'output',
+]);
+const loaded = new Map<GearKind, Make>();
+const loading = new Map<GearKind, Promise<void>>();
+
+/** Fetches a kind's unit code (once); resolves straight away for the built-in kinds. */
+export function loadUnit(kind: GearKind): Promise<void> {
+  if (loaded.has(kind) || BUILT_IN.has(kind)) return Promise.resolve();
+  let p = loading.get(kind);
+  if (!p) {
+    const load =
+      LOADERS[kind] ??
+      (() =>
+        import('./devices').then(
+          (m) => (ctx: AudioContext) => m.DEVICE_UNITS[kind as DeviceKind](ctx),
+        ));
+    p = load().then(
+      (make) => void loaded.set(kind, make),
+      (err) => {
+        loading.delete(kind); // let a later sync try again
+        throw err;
+      },
+    );
+    loading.set(kind, p);
+  }
+  return p;
 }
