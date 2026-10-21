@@ -121,18 +121,18 @@ test('a jack holds one cable: replugging pulls the old cable out', () => {
 
 test('removing gear unplugs its cables', () => {
   let p = demoPatch();
-  const delay = p.gear.find((g) => g.kind === 'mf104')!;
+  const poly = p.gear.find((g) => g.kind === 'jupiter8')!;
   const before = p.cables.length;
-  p = removeGear(p, delay.id);
-  assert.equal(p.cables.length, before - 2); // reverb → delay and delay → mixer
-  assert.ok(p.cables.every((c) => c.from.gear !== delay.id && c.to.gear !== delay.id));
+  p = removeGear(p, poly.id);
+  assert.equal(p.cables.length, before - 2); // CHORD-8 → JUPITER-8 and JUPITER-8 → mixer
+  assert.ok(p.cables.every((c) => c.from.gear !== poly.id && c.to.gear !== poly.id));
   assert.equal(disconnect(p, p.cables[0].id).cables.length, before - 3);
 });
 
 test('signal order puts every source before what it feeds', () => {
   const p = demoPatch();
   const kinds = signalOrder(p).map((id) => p.gear.find((g) => g.id === id)!.kind);
-  assert.deepEqual(kinds, ['ms20', 'modelD', 'overdrive', 'reverb', 'mf104', 'mixer', 'output']);
+  assert.deepEqual(kinds, ['chords', 'tr606', 'jupiter8', 'mixer', 'output']);
 });
 
 test('free spots never overlap gear or the tag row above it', () => {

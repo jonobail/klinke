@@ -60,8 +60,8 @@ export const emptyPatch = (): Patch => {
 };
 
 /**
- * The starter rig, after the KLINKE mockup: MS-20 → overdrive → reverb → MF-104 → mixer → main,
- * with a Model D on mixer channel 2.
+ * The starter rig: CHORD-8 plays the JUPITER-8 over a NOTE cable, into mixer channel 1, with the
+ * TR-606 on channel 2; the mixer feeds main. The keys play CHORD-8 (the first gear on the floor).
  */
 export function demoPatch(): Patch {
   let patch = emptyPatch();
@@ -69,19 +69,15 @@ export function demoPatch(): Patch {
     patch = addGear(patch, kind, x, y);
     return patch.gear[patch.gear.length - 1].id;
   };
-  const synth = place('ms20', 1, 1);
-  const drive = place('overdrive', 17, 2);
-  const verb = place('reverb', 21, 2);
-  const delay = place('mf104', 25, 2);
-  const modelD = place('modelD', 1, 8);
-  const mixer = place('mixer', 23, 8);
+  const chords = place('chords', 1, 1);
+  const drums = place('tr606', 16, 1);
+  const mixer = place('mixer', 30, 1);
+  const poly = place('jupiter8', 1, 9);
   patch = moveGear(patch, 'g0', 31, 8);
   const chain: [string, string, string, string][] = [
-    [synth, 'out', drive, 'in'],
-    [drive, 'out', verb, 'in'],
-    [verb, 'out', delay, 'in'],
-    [delay, 'out', mixer, 'in1'],
-    [modelD, 'out', mixer, 'in2'],
+    [chords, 'notesOut', poly, 'notesIn'],
+    [poly, 'out', mixer, 'in1'],
+    [drums, 'out', mixer, 'in2'],
     [mixer, 'out', 'g0', 'in'],
   ];
   for (const [g1, j1, g2, j2] of chain) {

@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/klinke-logo.svg" alt="KLINKE" width="560"></p>
 
-<p align="center"><img src="docs/klinke-studio.png" alt="KLINKE patch floor with synths, pedals, a mixer and the timeline" width="720"></p>
+<p align="center"><img src="docs/klinke-studio.png" alt="KLINKE patch floor with a chord generator, synths, a drum machine, a mixer and the timeline" width="720"></p>
 
 <p align="center">
   A patch bay studio in the browser · Built with Angular and the Web Audio API
@@ -42,11 +42,12 @@ sound is generated live in the browser; there is no server.
 ## Quick start
 
 1. Open the [live demo](https://jonobail.github.io/klinke/). The demo rig is already patched:
-   a synth runs through two pedals and a delay, and joins a second synth in the mixer
-   feeding **MAIN • REC**.
+   a chord generator plays a polysynth over a NOTE cable, and a drum machine joins it in the
+   mixer feeding **MAIN • REC**.
 2. Click anywhere to start audio, then play **A S D F G H J K L** (white keys) and
    **W E T Y U O P** (black keys); **Z / X** change octave.
-3. Click a synth to give it the keyboard (marked **⌨ KEYS**).
+3. Click a synth to give it the keyboard (marked **⌨ KEYS**); press **RUN/STOP** on the drum
+   machine to start its beat.
 4. Arm a track with **R**, press **REC**, play, then press **EXPORT MIX** to save a WAV.
 
 ## Using KLINKE
