@@ -281,6 +281,7 @@ const LOADERS: Partial<Record<GearKind, () => Promise<Make>>> = {
   mf104: () => import('./mf104-unit').then((m) => (ctx) => new m.Mf104Unit(ctx)),
   sp1200: () => import('./sp1200-unit').then((m) => (ctx) => new m.Sp1200Unit(ctx)),
   tb303: () => import('./tb303-unit').then((m) => (ctx) => new m.Tb303Unit(ctx)),
+  tr606: () => import('./tr606-unit').then((m) => (ctx) => new m.Tr606Unit(ctx)),
   juno60: () => import('./juno60-unit').then((m) => (ctx) => new m.Juno60Unit(ctx)),
   jupiter8: () => import('./jupiter8-unit').then((m) => (ctx) => new m.Jupiter8Unit(ctx)),
   sh2: () => import('./sh2-unit').then((m) => (ctx) => new m.Sh2Unit(ctx)),

@@ -1,0 +1,169 @@
+<!-- The back edge: jacks as on the hardware (NOTE IN / OUT stand in for SYNC and the trigger outs) -->
+<div class="back" aria-hidden="true">
+  <span>RUN/STOP · SYNC · TRIGGER OUT</span>
+</div>
+
+<!-- TEMPO, ACCENT, the instrument levels, VOLUME -->
+<div class="top">
+  <div class="tempo" title="TEMPO follows the song tempo (transport)">
+    <span class="lcd">{{ bpm() }}</span>
+    <span class="lbl">TEMPO</span>
+  </div>
+  @for (k of levels; track k[0]) {
+    <span class="rot">
+      <span class="lbl">{{ k[1] }}</span>
+      <kl-knob [value]="value(k[0])" [label]="k[1]" (changed)="set(k[0], $event)" />
+    </span>
+  }
+  <span class="rot">
+    <span class="lbl">VOLUME</span>
+    <kl-knob [value]="value('volume')" label="VOLUME" (changed)="set('volume', $event)" />
+  </span>
+  <div class="logo">
+    @if (hasKeyboard() && !preview()) {
+      <em class="kbd-mark" title="The computer keyboard and MIDI play these drums">⌨ KEYS</em>
+    }
+    <span class="model">TR-606</span>
+    <span class="sub">Computer Controlled</span>
+  </div>
+</div>
+
+<!-- MODE, PATTERN GROUP, instrument selector, SCALE -->
+<div class="mid">
+  <div class="sw" role="radiogroup" aria-label="MODE">
+    @for (m of ['write', 'play']; track m) {
+      <button
+        type="button"
+        role="radio"
+        [class.on]="mode() === m"
+        [attr.aria-checked]="mode() === m"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="setMode($any(m))"
+      >
+        PATTERN {{ m === 'write' ? 'WRITE' : 'PLAY' }}
+      </button>
+    }
+    <span class="lbl">MODE</span>
+  </div>
+  <div class="sw" role="radiogroup" aria-label="PATTERN GROUP">
+    @for (g of ['I', 'II']; track g; let i = $index) {
+      <button
+        type="button"
+        role="radio"
+        [class.on]="group() === i"
+        [attr.aria-checked]="group() === i"
+        [attr.aria-label]="'PATTERN GROUP ' + g"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="set('group', i)"
+      >
+        {{ g }}
+      </button>
+    }
+    <span class="lbl">GROUP</span>
+  </div>
+  <div class="sw inst" role="radiogroup" aria-label="INSTRUMENT">
+    @for (inst of INSTRUMENTS; track inst) {
+      <button
+        type="button"
+        role="radio"
+        [class.on]="instrument() === inst"
+        [class.ac]="inst === 'AC'"
+        [attr.aria-checked]="instrument() === inst"
+        [attr.aria-label]="INSTRUMENT_NAMES[inst]"
+        [title]="INSTRUMENT_NAMES[inst]"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="selectInstrument(inst)"
+      >
+        {{ inst }}
+      </button>
+    }
+    <span class="lbl">INSTRUMENT</span>
+  </div>
+  <div class="sw" role="radiogroup" aria-label="SCALE">
+    @for (sc of SCALE_NAMES; track sc; let i = $index) {
+      <button
+        type="button"
+        role="radio"
+        [class.on]="pattern().scale === i"
+        [attr.aria-checked]="pattern().scale === i"
+        [attr.aria-label]="'SCALE ' + sc"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="setScale(i)"
+      >
+        {{ i + 1 }}
+      </button>
+    }
+    <span class="lbl">SCALE {{ SCALE_NAMES[pattern().scale] }}</span>
+  </div>
+  <output class="where" [attr.aria-label]="'Pattern ' + groupName() + '-' + (chain()[0] + 1)">
+    {{ groupName() }}-{{ chain()[0] + 1 }}
+    @if (chain().length > 1) {
+      ·{{ chain().length }}
+    }
+  </output>
+</div>
+
+<!-- The button row and the 16 step keys -->
+<div class="board">
+  <div class="fns">
+    <button
+      type="button"
+      class="key"
+      title="CLEAR the pattern being written"
+      [disabled]="mode() !== 'write'"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="clear()"
+    >
+      <span class="cap"></span><span class="lbl">CLEAR</span>
+    </button>
+    <button
+      type="button"
+      class="key"
+      [class.on]="settingLast()"
+      title="LAST STEP: then press the step the pattern ends on"
+      [disabled]="mode() !== 'write'"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="lastStep()"
+    >
+      <i class="led"></i><span class="cap"></span><span class="lbl">LAST STEP</span>
+    </button>
+    <button
+      type="button"
+      class="key"
+      title="TAP: writes the instrument on the step playing (PATTERN WRITE, running)"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="tap()"
+    >
+      <span class="cap"></span><span class="lbl">TAP</span>
+    </button>
+    <button
+      type="button"
+      class="key big"
+      [class.on]="running()"
+      title="RUN / STOP (follows the song tempo)"
+      (pointerdown)="$event.stopPropagation()"
+      (click)="run()"
+    >
+      <i class="led"></i><span class="cap"></span><span class="lbl">RUN/STOP</span>
+    </button>
+  </div>
+  <div class="steps" role="group" aria-label="Step keys">
+    @for (i of stepNumbers; track i) {
+      <button
+        type="button"
+        class="key step"
+        [class.on]="lit(i)"
+        [class.out]="mode() === 'write' && i >= pattern().length"
+        [class.playing]="mode() === 'write' ? playingStep() === i : playingLocation() === i"
+        [class.block]="i % 4 === 0"
+        [attr.aria-pressed]="lit(i)"
+        [attr.aria-label]="stepTitle(i)"
+        [title]="stepTitle(i)"
+        (pointerdown)="$event.stopPropagation()"
+        (click)="stepKey($event, i)"
+      >
+        <i class="led"></i><span class="cap"></span><span class="lbl">{{ i + 1 }}</span>
+      </button>
+    }
+  </div>
+</div>

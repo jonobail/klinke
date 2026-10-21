@@ -226,6 +226,8 @@ each with NOTE IN / NOTE OUT.
 
 - [x] SH-2 (`docs/devices/sh2.md`): two VCOs + sub, low-note priority, envelope follower, AUDIO IN
 - [x] TB-303 (`docs/devices/tb303.md`): accent and slide circuits, 8 × 16-step patterns, transpose
+- [x] TR-606 (`docs/devices/tr606.md`): seven analog voices with one accent, 32 chained patterns,
+      four scales (no service notes: after a 1982 review; the voice circuits are our reading)
 - [x] JUNO-60 (`docs/devices/juno60.md`): 6 voices, cyclic assignment, chorus I / II / I+II, arp
 - [x] JUPITER-8 (`docs/devices/jupiter8.md`): 8 voices in an AudioWorklet (sync, cross mod), 12 / 24
       dB VCF, assign modes, arp

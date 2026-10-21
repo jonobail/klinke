@@ -99,6 +99,12 @@
   } @placeholder {
     <div class="loading" aria-hidden="true"></div>
   }
+} @else if (gear().kind === 'tr606') {
+  @defer (on viewport; prefetch on idle) {
+    <kl-tr606-panel [gear]="gear()" [preview]="preview()" />
+  } @placeholder {
+    <div class="loading" aria-hidden="true"></div>
+  }
 } @else if (gear().kind === 'juno60') {
   @defer (on viewport; prefetch on idle) {
     <kl-juno60-panel [gear]="gear()" [preview]="preview()" />

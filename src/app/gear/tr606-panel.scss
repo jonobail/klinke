@@ -1,0 +1,205 @@
+// TR-606: a silver top with black print and black knobs over a black switch board, its step keys
+// grey with red LEDs and the four blocks of four marked off in orange.
+:host {
+  --knob: 24px;
+  --tr-face: #c6c7c2;
+  --tr-ink: #1c1d20;
+  --tr-board: #1f2023;
+  --tr-key: #a6a7a3;
+  --tr-orange: #ff8a3d;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  color: var(--tr-ink);
+  background:
+    repeating-linear-gradient(90deg, #ffffff10 0 1px, transparent 1px 3px), var(--tr-face);
+  font: 6px/1 var(--font-pixel);
+}
+.lbl {
+  font: 5px/1 var(--font-pixel);
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+button {
+  font: inherit;
+  color: inherit;
+  &:focus-visible {
+    outline: 1px solid var(--accent);
+  }
+}
+
+// ── Back edge ──
+.back {
+  display: flex;
+  height: 16px;
+  padding: 0 34px 0 8px;
+  align-items: center;
+  background: #9fa09b;
+  font: 5px/1 var(--font-pixel);
+  color: #3a3b3e;
+}
+
+// ── Knob row ──
+.top {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 8px 10px 6px;
+}
+.rot,
+.tempo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.tempo .lcd {
+  min-width: 22px;
+  padding: 2px 3px;
+  text-align: center;
+  font: 7px/1 var(--font-pixel);
+  color: #ff5a64;
+  background: #1a0d0f;
+}
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-left: auto;
+  align-self: center;
+  .model {
+    font: 13px/1 var(--font-pixel);
+  }
+  .sub {
+    font: italic 5px/1 var(--font-pixel);
+  }
+}
+.kbd-mark {
+  padding: 2px 3px;
+  font: 6px/1 var(--font-pixel);
+  font-style: normal;
+  color: #18181b;
+  background: var(--green);
+}
+
+// ── Switches ──
+.mid {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 10px 6px;
+}
+.sw {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  .lbl {
+    flex-basis: 100%;
+    order: -1;
+    margin-bottom: 1px;
+  }
+  button {
+    padding: 2px 3px;
+    border: 1px solid var(--tr-ink);
+    background: none;
+    font: 5px/1 var(--font-pixel);
+    cursor: pointer;
+    &.on {
+      color: #f2f2ee;
+      background: var(--tr-ink);
+    }
+    &.ac {
+      border-color: var(--tr-orange);
+    }
+  }
+}
+.where {
+  margin-left: auto;
+  min-width: 26px;
+  padding: 3px 4px;
+  text-align: center;
+  font: 7px/1 var(--font-pixel);
+  color: #ff5a64;
+  background: #1a0d0f;
+}
+
+// ── Switch board ──
+.board {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 8px;
+  color: #e8e7e1;
+  background: var(--tr-board);
+  min-height: 0;
+}
+.fns {
+  display: flex;
+  gap: 6px;
+}
+.steps {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 3px;
+}
+.key {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  .cap {
+    display: block;
+    width: 17px;
+    height: 13px;
+    background: var(--tr-key);
+    box-shadow:
+      inset -1px -1px 0 #00000059,
+      inset 1px 1px 0 #ffffff59;
+  }
+  &:active .cap {
+    background: #7c7d79;
+  }
+  &.big .cap {
+    width: 24px;
+    height: 17px;
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  &.step.block::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: 0;
+    width: calc(400% + 9px);
+    height: 1px;
+    background: var(--tr-orange);
+  }
+  &.out {
+    opacity: 0.35;
+  }
+  &.playing .cap {
+    box-shadow: inset 0 0 0 1px var(--tr-orange);
+  }
+}
+.led {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #4a1d22;
+  .on > & {
+    background: #ff4d5a;
+    box-shadow: 0 0 4px #ff4d5a;
+  }
+}

@@ -10,6 +10,7 @@ import { ChoirPanel } from './choir-panel';
 import { ChordsPanel } from './chords-panel';
 import { Keyboard } from './keyboard';
 import { Tb303Panel } from './tb303-panel';
+import { Tr606Panel } from './tr606-panel';
 import { Juno60Panel } from './juno60-panel';
 import { Jupiter8Panel } from './jupiter8-panel';
 import { Sh2Panel } from './sh2-panel';
@@ -36,6 +37,7 @@ import { Sp1200Panel } from './sp1200-panel';
     MotionPanel,
     ChoirPanel,
     Tb303Panel,
+    Tr606Panel,
     Juno60Panel,
     Jupiter8Panel,
     Sh2Panel,

@@ -21,6 +21,7 @@ import { CHOIR_GEAR } from './choir.ts';
 import { CHORDS_GEAR } from './chords.ts';
 import { MOTION_GEAR } from './motion.ts';
 import { TB303_GEAR } from './tb303.ts';
+import { TR606_GEAR } from './tr606.ts';
 import { JUNO60_GEAR } from './juno60.ts';
 import { JUPITER8_GEAR } from './jupiter8.ts';
 import { SH2_GEAR } from './sh2.ts';
@@ -430,6 +431,7 @@ const BUILT_IN: Record<Exclude<GearKind, DeviceKind>, GearDef> = {
   },
   // More synths, each in its own module with its logic.
   tb303: TB303_GEAR,
+  tr606: TR606_GEAR,
   juno60: JUNO60_GEAR,
   jupiter8: JUPITER8_GEAR,
   sh2: SH2_GEAR,
@@ -479,6 +481,7 @@ export const INVENTORY: GearKind[] = [
   'sh101',
   'ps3100',
   'tb303',
+  'tr606',
   'juno60',
   'jupiter8',
   'sh2',

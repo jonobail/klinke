@@ -21,6 +21,7 @@ export type GearKind =
   | 'modelD'
   | 'sh101'
   | 'tb303'
+  | 'tr606'
   | 'juno60'
   | 'jupiter8'
   | 'sh2'

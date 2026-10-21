@@ -41,6 +41,11 @@ export const DESCRIPTIONS: Record<GearKind, GearInfo> = {
     purpose:
       'One oscillator (saw or square) into a squelchy 4-pole filter with accent and slide, played from its own 16-step pattern sequencer; the acid bass machine.',
   },
+  tr606: {
+    what: 'Analog drum machine with sequencer (1981)',
+    purpose:
+      'Seven analog voices (bass drum, snare, two toms, cymbal, open and closed hi-hat) with one shared accent, played from 32 step patterns that chain; the thin, snappy partner to the TB-303.',
+  },
   juno60: {
     what: '6-voice polyphonic synthesizer (1982)',
     purpose:
