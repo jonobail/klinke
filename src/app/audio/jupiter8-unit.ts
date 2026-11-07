@@ -53,6 +53,8 @@ registerProcessor('klinke-jupiter8', class extends AudioWorkletProcessor {
 type Message = { type: string } & Record<string, unknown>;
 
 export class Jupiter8Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private s?: Jupiter8Settings;
   private readonly assigner = new Jp8Assigner();
   private node?: AudioWorkletNode;

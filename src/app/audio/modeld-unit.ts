@@ -31,6 +31,8 @@ const HARMONICS = 96;
 const FREE_NOTE = 60;
 
 export class ModelDUnit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private readonly keys = new MonoKeys('low');
   private s!: ModelDSettings;
   private note = 48;

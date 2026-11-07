@@ -72,6 +72,8 @@ const modules = new WeakMap<BaseAudioContext, Promise<void>>();
 type TimedEvent = VoiceEvent & { t?: number; seq?: boolean };
 
 export class Jx3pUnit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private s!: Jx3pSettings;
   private node?: AudioWorkletNode;
   private queue: TimedEvent[] | null = [];
@@ -263,14 +265,14 @@ export class Jx3pUnit extends Unit implements Playable {
     this.latched.delete(note);
     if (s.seqWrite && this.pending.length < 6 && !this.pending.includes(note))
       this.pending.push(note);
-    this.post({ type: 'on', id: note, note });
+    this.post({ type: 'on', id: note, note, t: this.ctx.currentTime });
   }
 
   noteOff(note: number) {
     const s = this.s;
     if (!this.down.delete(note)) return;
     if (s.hold) this.latched.add(note);
-    else this.post({ type: 'off', id: note });
+    else this.post({ type: 'off', id: note, t: this.ctx.currentTime });
     // The chord is one step once every key is up.
     if (s.seqWrite && !this.down.size && this.pending.length) {
       this.saveSequence(

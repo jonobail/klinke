@@ -1,17 +1,18 @@
 <div class="head ruler-head">
-  <label class="song-loop" title="Song loop: the song plays round its first bars">
+  <span class="song-loop" title="Song loop: drag the bar above the ruler to set it">
     <span>LOOP</span>
-    <input
-      type="range"
-      min="0"
-      [max]="LOOP_BARS.length - 1"
-      step="1"
-      aria-label="Song loop length in bars"
-      [value]="songLoopIndex()"
-      (input)="setSongLoop($event)"
-    />
-    <b>{{ transport.loopBars() }}</b>
-  </label>
+    <b>{{ loopLabel() }}</b>
+  </span>
+  <button
+    type="button"
+    class="rec-set"
+    [class.on]="rec.options().click"
+    [attr.aria-expanded]="recPanel() !== null"
+    title="Recording: metronome, count-in and latency"
+    (click)="toggleRecPanel($event)"
+  >
+    ♩{{ rec.options().click ? ' ON' : '' }}
+  </button>
   <button
     type="button"
     class="add"
@@ -22,11 +23,31 @@
     +
   </button>
 </div>
-<div class="ruler" title="Click to move the playhead" (click)="seek($event)">
+<div
+  class="ruler"
+  title="Click to move the playhead · drag along it to draw the song loop"
+  (pointerdown)="rulerDown($event)"
+>
   @for (b of bars; track b) {
-    <span [class.out]="b > transport.loopBars()">{{ b }}</span>
+    <span [class.out]="b > transport.loopBars() || b <= transport.loopStart()">{{ b }}</span>
   }
   <i class="beyond" [style.left.%]="pct(transport.loopBeats())"></i>
+  <!-- The loop brace: drag it to move the song loop, its ends to set where it starts and ends -->
+  <div
+    class="brace"
+    [style.left.%]="pct(transport.loopStartBeats())"
+    [style.width.%]="pct(transport.loopLength())"
+    title="Song loop: drag to move, drag an end to resize"
+    (pointerdown)="dragSongLoop($event, 'move')"
+    (click)="$event.stopPropagation()"
+  >
+    <i
+      class="grip start"
+      aria-label="Song loop start"
+      (pointerdown)="dragSongLoop($event, 'start')"
+    ></i>
+    <i class="grip end" aria-label="Song loop end" (pointerdown)="dragSongLoop($event, 'end')"></i>
+  </div>
 </div>
 
 @for (t of transport.tracks(); track t.id; let i = $index) {
@@ -83,20 +104,26 @@
         }
       }
       <i class="beyond" [style.left.%]="pct(transport.loopBeats())"></i>
-      <label class="track-loop" [class.on]="looping(t)" (click)="$event.stopPropagation()">
-        <span>LOOP</span>
-        <input
-          type="range"
-          min="0"
-          [max]="TRACK_LOOPS.length - 1"
-          step="1"
-          [attr.aria-label]="t.name + ' loop length in bars'"
-          title="Repeat this track's first bars (OFF follows the song loop)"
-          [value]="TRACK_LOOPS.indexOf(t.loop)"
-          (input)="setTrackLoop(t, $event)"
-        />
+      <div
+        class="clip-loop"
+        [class.on]="looping(t)"
+        [style.width.%]="pct(transport.trackLoop(t))"
+        [title]="
+          t.name +
+          ' loop: ' +
+          trackLoopLabel(t) +
+          ' (drag the end to set it, double-click to follow the song)'
+        "
+        (click)="$event.stopPropagation()"
+        (dblclick)="clearTrackLoop(t)"
+      >
         <b>{{ trackLoopLabel(t) }}</b>
-      </label>
+        <i
+          class="grip end"
+          [attr.aria-label]="t.name + ' loop end'"
+          (pointerdown)="dragTrackLoop($event, t)"
+        ></i>
+      </div>
 
       <select
         class="instrument"
@@ -112,35 +139,57 @@
           </option>
         }
       </select>
-      @if (!t.notes.length) {
-        <span class="empty">{{
-          t.arm
-            ? 'press REC and play ' + instrumentLabel(t)
-            : 'arm R and press REC, or click to draw notes'
-        }}</span>
-      }
     </div>
   } @else {
-    <div class="lane audio" [class.muted]="t.mute">
+    <div class="lane audio" [class.muted]="t.mute" (pointerdown)="picked.set(null)">
       @for (at of repeats(t); track at; let first = $first) {
         @if (!first) {
           <i class="repeat" [style.left.%]="pct(at)"></i>
         }
         @for (take of t.takes; track take.id) {
-          <div
-            class="take"
-            [class.ghost]="!first"
-            [style.left.%]="pct(at + take.start)"
-            [style.width.%]="pct(takeBeats(t, take))"
-          >
-            <svg
-              [attr.viewBox]="'0 0 ' + take.peaks.length + ' 100'"
-              preserveAspectRatio="none"
-              aria-hidden="true"
+          @if (first) {
+            <!-- The take itself: pick it, drag to move, drag an edge to trim, Delete removes it -->
+            <div
+              class="take"
+              tabindex="0"
+              [class.picked]="isPicked(t, take)"
+              [style.left.%]="pct(at + take.start)"
+              [style.width.%]="pct(takeBeats(t, take))"
+              [attr.aria-label]="
+                'Take on ' + t.name + ': drag to move, drag an edge to trim, Delete removes it'
+              "
+              (pointerdown)="takeDown($event, t, take, 'move')"
+              (keydown)="takeKey($event, t, take)"
             >
-              <path [attr.d]="wave(take)" />
-            </svg>
-          </div>
+              <svg [attr.viewBox]="waveBox(take)" preserveAspectRatio="none" aria-hidden="true">
+                <path [attr.d]="wave(take)" />
+              </svg>
+              <i class="edge start" (pointerdown)="takeDown($event, t, take, 'start')"></i>
+              <i class="edge end" (pointerdown)="takeDown($event, t, take, 'end')"></i>
+              @if (isPicked(t, take)) {
+                <button
+                  type="button"
+                  class="drop"
+                  title="Delete this take"
+                  [attr.aria-label]="'Delete this take on ' + t.name"
+                  (pointerdown)="$event.stopPropagation(); $event.preventDefault()"
+                  (click)="removeTake(t, take)"
+                >
+                  ✕
+                </button>
+              }
+            </div>
+          } @else {
+            <div
+              class="take ghost"
+              [style.left.%]="pct(at + take.start)"
+              [style.width.%]="pct(takeBeats(t, take))"
+            >
+              <svg [attr.viewBox]="waveBox(take)" preserveAspectRatio="none" aria-hidden="true">
+                <path [attr.d]="wave(take)" />
+              </svg>
+            </div>
+          }
         }
       }
       <i class="beyond" [style.left.%]="pct(transport.loopBeats())"></i>
@@ -167,20 +216,26 @@
           <option [value]="t.source" selected>— gone —</option>
         }
       </select>
-      <label class="track-loop" [class.on]="looping(t)" (click)="$event.stopPropagation()">
-        <span>LOOP</span>
-        <input
-          type="range"
-          min="0"
-          [max]="TRACK_LOOPS.length - 1"
-          step="1"
-          [attr.aria-label]="t.name + ' loop length in bars'"
-          title="Repeat this track's first bars (OFF follows the song loop)"
-          [value]="TRACK_LOOPS.indexOf(t.loop)"
-          (input)="setTrackLoop(t, $event)"
-        />
+      <div
+        class="clip-loop"
+        [class.on]="looping(t)"
+        [style.width.%]="pct(transport.trackLoop(t))"
+        [title]="
+          t.name +
+          ' loop: ' +
+          trackLoopLabel(t) +
+          ' (drag the end to set it, double-click to follow the song)'
+        "
+        (click)="$event.stopPropagation()"
+        (dblclick)="clearTrackLoop(t)"
+      >
         <b>{{ trackLoopLabel(t) }}</b>
-      </label>
+        <i
+          class="grip end"
+          [attr.aria-label]="t.name + ' loop end'"
+          (pointerdown)="dragTrackLoop($event, t)"
+        ></i>
+      </div>
       @if (t.takes.length) {
         <button
           type="button"
@@ -191,13 +246,82 @@
         >
           ✕
         </button>
-      } @else if (start === undefined) {
-        <span class="empty">{{
-          t.arm ? 'press REC to record ' + sourceLabel(t) : 'arm R and press REC to record audio'
-        }}</span>
       }
     </div>
   }
 }
 
 <div class="playhead" [style.--at]="playhead()"></div>
+
+@if (recPanel(); as at) {
+  <section
+    class="rec-panel"
+    role="dialog"
+    aria-label="Recording settings"
+    [style.left.px]="at.left"
+    [style.bottom]="'calc(100vh - ' + at.top + 'px + 6px)'"
+  >
+    <header>
+      <h2>RECORDING</h2>
+      <button type="button" class="close" aria-label="Close" (click)="recPanel.set(null)">×</button>
+    </header>
+    <div class="row">
+      <span>CLICK</span>
+      <button
+        type="button"
+        [class.on]="rec.options().click"
+        [attr.aria-pressed]="rec.options().click"
+        (click)="rec.update({ click: !rec.options().click })"
+      >
+        {{ rec.options().click ? 'ON' : 'OFF' }}
+      </button>
+    </div>
+    <div class="row" role="group" aria-label="Count-in before REC">
+      <span>COUNT-IN</span>
+      @for (n of [0, 1, 2]; track n) {
+        <button
+          type="button"
+          [class.on]="rec.options().countIn === n"
+          [attr.aria-pressed]="rec.options().countIn === n"
+          (click)="rec.update({ countIn: $any(n) })"
+        >
+          {{ n ? n + ' BAR' : 'OFF' }}
+        </button>
+      }
+    </div>
+    <p class="hint">REC from a stopped song clicks this many bars in first.</p>
+    <div class="row">
+      <span>LATENCY</span>
+      <button
+        type="button"
+        [class.on]="rec.options().autoLatency"
+        [attr.aria-pressed]="rec.options().autoLatency"
+        (click)="rec.update({ autoLatency: !rec.options().autoLatency })"
+      >
+        AUTO {{ rec.options().autoLatency ? 'ON' : 'OFF' }}
+      </button>
+      @let ms = measuredLatency();
+      @if (ms !== null) {
+        <small>{{ ms }} ms</small>
+      }
+    </div>
+    <label class="row">
+      <span>OFFSET</span>
+      <input
+        type="number"
+        aria-label="Extra latency offset in ms"
+        [min]="OFFSET_MIN"
+        [max]="OFFSET_MAX"
+        step="1"
+        [value]="rec.options().offsetMs"
+        (change)="setOffset($event)"
+        (keydown)="$event.stopPropagation()"
+      />
+      <small>ms</small>
+    </label>
+    <p class="hint">
+      Notes you record move earlier by the sound's delay to your ears (AUTO) plus OFFSET, so they
+      land where you heard the beat.
+    </p>
+  </section>
+}

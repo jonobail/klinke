@@ -8,14 +8,19 @@ import {
   FLOOR_W,
   addGear,
   cableAt,
+  cableHitPath,
+  clashes,
   connect,
   demoPatch,
   disconnect,
   drawnExtent,
   emptyPatch,
   floorExtent,
+  moveCableEnd,
   moveGear,
+  nearestFree,
   parsePatch,
+  placeGear,
   freeSpot,
   removeGear,
   setParam,
@@ -318,4 +323,75 @@ test('every instrument has a NOTE IN and a NOTE OUT', () => {
       assert.equal(jack?.signal, 'note', `${def.kind} ${id}`);
     }
   }
+});
+
+test('gear dropped on other gear slides to the nearest free spot', () => {
+  let p = addGear(emptyPatch(), 'overdrive', 2, 2);
+  p = addGear(p, 'overdrive', 20, 10);
+  const [, a, b] = p.gear;
+  const w = GEAR.overdrive.w;
+  // Right on top of the first pedal: it moves off by the least it can.
+  const dropped = placeGear(p, b.id, a.x + 1, a.y);
+  const g = dropped.gear.find((x) => x.id === b.id)!;
+  assert.ok(!clashes(dropped, b.id, 'overdrive', g.x, g.y));
+  assert.deepEqual({ x: g.x, y: g.y }, { x: a.x + w, y: a.y });
+  // A clear spot is kept as it is; a box never clashes with itself.
+  assert.equal(placeGear(p, b.id, 20, 10), p);
+  assert.deepEqual(nearestFree(p, a.id, 'overdrive', a.x, a.y), { x: a.x, y: a.y });
+  // The row above a box (its name tag) counts as taken.
+  assert.ok(clashes(p, b.id, 'overdrive', a.x, a.y + GEAR.overdrive.h));
+  assert.ok(!clashes(p, b.id, 'overdrive', a.x, a.y + GEAR.overdrive.h + 1));
+});
+
+test('nearestFree stays on the floor and finds room on a crowded one', () => {
+  let p = emptyPatch();
+  for (let i = 0; i < 30; i++) {
+    const s = freeSpot(p, 'mixer');
+    p = addGear(p, 'mixer', s.x, s.y);
+  }
+  for (const g of p.gear) {
+    const s = nearestFree(p, 'new', 'mixer', g.x, g.y);
+    assert.ok(s.x >= 0 && s.y >= 0);
+    assert.ok(!clashes(p, 'new', 'mixer', s.x, s.y), JSON.stringify(s));
+  }
+});
+
+test('dragging a cable end moves just that end; refused moves change nothing', () => {
+  let p = withGear('overdrive', 'delay', 'reverb');
+  const [out, od, dl, rv] = p.gear.map((g) => g.id);
+  p = connect(p, { gear: od, jack: 'out' }, { gear: dl, jack: 'in' }).patch;
+  const id = p.cables[0].id;
+  // Move the IN end from the delay to the reverb.
+  const moved = moveCableEnd(p, id, 'to', { gear: rv, jack: 'in' });
+  assert.equal(moved.error, undefined);
+  assert.equal(moved.patch.cables.length, 1);
+  assert.deepEqual(moved.patch.cables[0].from, { gear: od, jack: 'out' });
+  assert.deepEqual(moved.patch.cables[0].to, { gear: rv, jack: 'in' });
+  // Moving the OUT end works the same way: the reverb now feeds the delay.
+  const fromMoved = moveCableEnd(p, id, 'from', { gear: rv, jack: 'out' });
+  assert.deepEqual(fromMoved.patch.cables[0].from, { gear: rv, jack: 'out' });
+  assert.deepEqual(fromMoved.patch.cables[0].to, { gear: dl, jack: 'in' });
+  // An OUT end can't go onto an IN jack, and a loop is refused: the cable stays put.
+  const bad = moveCableEnd(p, id, 'from', { gear: out, jack: 'in' });
+  assert.equal(bad.error, 'direction');
+  assert.equal(bad.patch, p);
+  const loop = moveCableEnd(p, id, 'to', { gear: od, jack: 'in' });
+  assert.equal(loop.error, 'same-gear');
+  assert.equal(loop.patch, p);
+});
+
+test('a cable is only clickable where it is clear of the gear', () => {
+  const a = { x: 0, y: 0 };
+  const b = { x: 400, y: 0 };
+  const whole = cableHitPath(a, b, []);
+  assert.equal(whole.split('M').length - 1, 1, 'one unbroken run');
+  // A box over the middle splits it into two runs, and no hit point lands inside the box.
+  const box = { x: 150, y: 0, w: 100, h: 400 };
+  const split = cableHitPath(a, b, [box]);
+  assert.equal(split.split('M').length - 1, 2);
+  for (const [, x] of split.matchAll(/[ML](-?\d+) /g)) {
+    assert.ok(Number(x) <= box.x - 8 || Number(x) >= box.x + box.w + 8, x);
+  }
+  // Fully covered: nothing to click.
+  assert.equal(cableHitPath(a, b, [{ x: -50, y: -50, w: 600, h: 600 }]), '');
 });

@@ -353,3 +353,134 @@ function cleanText(raw: unknown): Record<string, string> {
       .map(([k, v]) => [k, (v as string).slice(0, TEXT_MAX)]),
   );
 }
+
+// ---- keeping gear apart ----
+
+/** A box's footprint in cells, with the row above it where its name tag hangs. */
+function footprint(kind: GearKind, x: number, y: number) {
+  const def = GEAR[kind];
+  return { x, y: y - 1, w: def.w, h: def.h + 1 };
+}
+
+/** Would gear `id` (of `kind`) at (x, y) overlap another box or the name tag above one? */
+export function clashes(patch: Patch, id: string, kind: GearKind, x: number, y: number): boolean {
+  const a = footprint(kind, x, y);
+  return patch.gear.some((g) => {
+    if (g.id === id) return false;
+    const b = footprint(g.kind, g.x, g.y);
+    return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  });
+}
+
+/**
+ * The free spot nearest (x, y) for gear `id`, so a box dropped on top of another slides off it
+ * to the closest place it fits. Searches rings outwards; once one ring has a free spot, rings a
+ * little further out are checked too, since a diagonal spot can be nearer than it looks.
+ */
+export function nearestFree(
+  patch: Patch,
+  id: string,
+  kind: GearKind,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  const at = clampToFloor(kind, x, y);
+  if (!clashes(patch, id, kind, at.x, at.y)) return at;
+  const def = GEAR[kind];
+  const ok = (cx: number, cy: number) =>
+    cx >= 0 &&
+    cy >= 0 &&
+    cx <= FLOOR_LIMIT - def.w &&
+    cy <= FLOOR_LIMIT - def.h &&
+    !clashes(patch, id, kind, cx, cy);
+  let best: { x: number; y: number; d: number } | null = null;
+  let stopAt = Infinity;
+  const extent = floorExtent(patch);
+  const maxR = extent.w + extent.h + def.w + def.h;
+  for (let r = 1; r <= Math.min(maxR, stopAt); r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const cx = at.x + dx;
+        const cy = at.y + dy;
+        if (!ok(cx, cy)) continue;
+        const d = Math.hypot(dx, dy);
+        if (!best || d < best.d) best = { x: cx, y: cy, d };
+      }
+    }
+    if (best && stopAt === Infinity) stopAt = Math.ceil(best.d);
+  }
+  return best ? { x: best.x, y: best.y } : freeSpot(patch, kind);
+}
+
+/** Moves gear to the free spot nearest (x, y) (see `nearestFree`). */
+export function placeGear(patch: Patch, id: string, x: number, y: number): Patch {
+  const g = patch.gear.find((x) => x.id === id);
+  if (!g) return patch;
+  const spot = nearestFree(patch, id, g.kind, x, y);
+  return spot.x === g.x && spot.y === g.y ? patch : moveGear(patch, id, spot.x, spot.y);
+}
+
+// ---- cables ----
+
+/**
+ * Moves one end of a cable to another jack, keeping the other end where it is: what dragging a
+ * plugged cable end does. A refused move (wrong direction, a loop) leaves the patch as it was.
+ */
+export function moveCableEnd(
+  patch: Patch,
+  cableId: string,
+  end: 'from' | 'to',
+  to: JackRef,
+): { patch: Patch; error?: PatchError } {
+  const cable = patch.cables.find((c) => c.id === cableId);
+  if (!cable) return { patch, error: 'unknown-jack' };
+  if (sameJack(cable[end], to)) return { patch };
+  const fixed = end === 'from' ? cable.to : cable.from;
+  const result = connect(disconnect(patch, cableId), fixed, to);
+  return result.error ? { patch, error: result.error } : result;
+}
+
+/** Floor px around a box where a cable can't be clicked, so the controls under it can. */
+const HIT_MARGIN = 8;
+
+/**
+ * The clickable part of a hanging cable: the curve sampled into polylines, leaving out every
+ * stretch that crosses a box (given in floor px). A cable drawn over a panel then never takes
+ * the clicks meant for the knobs beneath it. Returns an SVG path ('' when none of it is clear).
+ */
+export function cableHitPath(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  boxes: { x: number; y: number; w: number; h: number }[],
+  samples = 48,
+): string {
+  const sag = cableSag(a, b);
+  const p1 = { x: a.x, y: a.y + sag };
+  const p2 = { x: b.x, y: b.y + sag };
+  const m = HIT_MARGIN;
+  const covered = (x: number, y: number) =>
+    boxes.some((r) => x > r.x - m && x < r.x + r.w + m && y > r.y - m && y < r.y + r.h + m);
+  const r = (n: number) => Math.round(n);
+  let d = '';
+  let open = false;
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const u = 1 - t;
+    const x = u * u * u * a.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * b.x;
+    const y = u * u * u * a.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * b.y;
+    if (covered(x, y)) {
+      open = false;
+      continue;
+    }
+    d += `${open ? 'L' : d ? ' M' : 'M'}${r(x)} ${r(y)}`;
+    open = true;
+  }
+  return d;
+}
+
+/** Floor px a box covers (at zoom ×1), name tag not included. */
+export function gearRect(g: Gear): { x: number; y: number; w: number; h: number } {
+  const def = GEAR[g.kind];
+  return { x: g.x * CELL, y: g.y * CELL, w: def.w * CELL, h: def.h * CELL };
+}

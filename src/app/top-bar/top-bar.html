@@ -4,6 +4,16 @@
     <path d="M2 9h2V7h2v4h2V4h2v6h2V8h2" fill="none" stroke="#1b1d24" stroke-width="1.5" />
   </svg>
   <h1>KLINKE</h1>
+  <button
+    type="button"
+    class="project"
+    [class.open]="openMenu() === 'PROJECTS'"
+    [attr.aria-expanded]="openMenu() === 'PROJECTS'"
+    title="Projects: open, rename, duplicate, delete"
+    (click)="toggleProjects()"
+  >
+    {{ projects.currentName() }} ▾
+  </button>
 </div>
 
 <nav class="menus" aria-label="Menu">
@@ -21,7 +31,18 @@
         <ul role="menu">
           @for (item of m.items; track item.label) {
             <li role="none">
-              <button type="button" role="menuitem" (click)="pick(item)">{{ item.label }}</button>
+              <button
+                type="button"
+                role="menuitem"
+                [disabled]="item.disabled?.()"
+                [attr.aria-disabled]="item.disabled?.() || null"
+                (click)="pick(item)"
+              >
+                {{ item.label }}
+                @if (item.keys) {
+                  <kbd>{{ item.keys }}</kbd>
+                }
+              </button>
             </li>
           }
         </ul>
@@ -50,7 +71,18 @@
         <li role="presentation" class="group">{{ m.name }}</li>
         @for (item of m.items; track item.label) {
           <li role="none">
-            <button type="button" role="menuitem" (click)="pick(item)">{{ item.label }}</button>
+            <button
+              type="button"
+              role="menuitem"
+              [disabled]="item.disabled?.()"
+              [attr.aria-disabled]="item.disabled?.() || null"
+              (click)="pick(item)"
+            >
+              {{ item.label }}
+              @if (item.keys) {
+                <kbd>{{ item.keys }}</kbd>
+              }
+            </button>
           </li>
         }
       }
@@ -84,7 +116,7 @@
     class="t stop"
     title="Stop (twice to return to the top)"
     aria-label="Stop"
-    (click)="transport.stop()"
+    (click)="transport.stop(); engine.kill()"
   >
     <svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" fill="currentColor" /></svg>
   </button>
@@ -92,7 +124,8 @@
     type="button"
     class="t rec"
     [class.on]="transport.recording()"
-    title="Record on armed tracks"
+    [class.counting]="transport.countingIn() !== null"
+    [title]="transport.countingIn() ? 'Counting in: click to cancel' : 'Record on armed tracks'"
     aria-label="Record"
     [attr.aria-pressed]="transport.recording()"
     (click)="transport.record()"
@@ -268,6 +301,95 @@
       } @else {
         <p class="hint">No MIDI outputs yet.</p>
       }
+      @if (sync.settings().clockOut && sync.loopBlocked().length) {
+        <p class="hint">
+          Not to {{ sync.loopBlocked().join(', ') }}: clock comes in from there, and sending it back
+          would loop.
+        </p>
+      }
     </fieldset>
+  </section>
+}
+
+@if (openMenu() === 'PROJECTS') {
+  <section class="projects" role="dialog" aria-label="Projects">
+    <header>
+      <h2>PROJECTS</h2>
+      <button type="button" class="close" aria-label="Close" (click)="openMenu.set(null)">×</button>
+    </header>
+    @if (!projects.available()) {
+      <p class="hint">
+        This browser isn't letting KLINKE use its storage (private browsing?), so only the open
+        project is kept.
+      </p>
+    }
+    <div class="tools">
+      <button type="button" [disabled]="projects.busy()" (click)="projects.create()">+ NEW</button>
+      <button type="button" [disabled]="projects.busy()" (click)="importBundle()">IMPORT</button>
+      <button type="button" [disabled]="projects.busy()" (click)="projects.exportBundle()">
+        EXPORT
+      </button>
+    </div>
+    <ul class="list" aria-label="Saved projects">
+      @for (p of projects.list(); track p.id) {
+        <li [class.current]="p.id === projects.current()">
+          @if (renaming() === p.id) {
+            <input
+              class="name-edit"
+              aria-label="Project name"
+              maxlength="40"
+              [value]="p.name"
+              (blur)="rename(p, $event)"
+              (keydown)="renameKey($event)"
+            />
+          } @else {
+            <button
+              type="button"
+              class="name"
+              [disabled]="projects.busy()"
+              [attr.aria-current]="p.id === projects.current() || null"
+              [title]="p.id === projects.current() ? 'Open now' : 'Open ' + p.name"
+              (click)="projects.open(p.id)"
+            >
+              <span>{{ p.name }}</span>
+              <small>{{ p.id === projects.current() ? 'OPEN · ' : '' }}{{ when(p.updated) }}</small>
+            </button>
+          }
+          <div class="row-tools">
+            <button
+              type="button"
+              [attr.aria-label]="'Rename ' + p.name"
+              title="Rename"
+              (click)="startRename(p)"
+            >
+              REN
+            </button>
+            <button
+              type="button"
+              [disabled]="projects.busy()"
+              [attr.aria-label]="'Duplicate ' + p.name"
+              title="Duplicate"
+              (click)="projects.duplicate(p.id)"
+            >
+              DUP
+            </button>
+            <button
+              type="button"
+              class="del"
+              [class.armed]="confirming() === p.id"
+              [disabled]="projects.busy()"
+              [attr.aria-label]="(confirming() === p.id ? 'Confirm delete ' : 'Delete ') + p.name"
+              [title]="confirming() === p.id ? 'Press again to delete it and its audio' : 'Delete'"
+              (click)="remove(p)"
+            >
+              {{ confirming() === p.id ? 'SURE?' : 'DEL' }}
+            </button>
+          </div>
+        </li>
+      } @empty {
+        <li class="hint">No saved projects yet.</li>
+      }
+    </ul>
+    <p class="hint">Changes save themselves a moment after you make them.</p>
   </section>
 }

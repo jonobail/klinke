@@ -73,6 +73,11 @@ header {
   &.push {
     margin-left: auto;
   }
+  &:disabled {
+    color: var(--muted);
+    opacity: 0.5;
+    cursor: default;
+  }
 }
 .scroller {
   flex: 1;

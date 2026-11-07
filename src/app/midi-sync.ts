@@ -7,6 +7,7 @@ import {
   PPQN,
   STOP,
   TempoEstimator,
+  clockTargets,
   loopDiff,
   parseMidiSettings,
   sppBeats,
@@ -51,6 +52,14 @@ export class MidiSync {
   readonly settings = signal<MidiSettings>(load());
   /** The song's tempo and transport follow MIDI clock in. */
   readonly external = computed(() => this.settings().sync === 'external');
+  /**
+   * Outputs clock out leaves out because clock comes in from the same device (sending it back
+   * would loop); shown in the MIDI panel.
+   */
+  readonly loopBlocked = computed(
+    () =>
+      clockTargets(this.engine.midiOutputs(), this.engine.midiInputs(), this.settings()).blocked,
+  );
 
   // Clock out
   private line: ClockLine | null = null;
@@ -117,7 +126,7 @@ export class MidiSync {
     // Re-anchored (a tempo change, the loop wrapping) or jumped (a seek)?
     const now = performance.now();
     const at = this.line.beatAt(now);
-    const d = loopDiff(this.transport.beatNow(), at, this.transport.loopBeats());
+    const d = loopDiff(this.transport.beatNow(), at, this.transport.loopLength());
     if (Math.abs(d) < JUMP) this.line.reanchor(at + d, now, this.transport.bpm());
     else {
       this.halt();
@@ -164,14 +173,16 @@ export class MidiSync {
     for (const t of this.line.take(performance.now() + ahead)) this.send([CLOCK], t);
   }
 
+  /** The ports clock out goes to: the chosen ones, less any that would loop (see `clockTargets`). */
   private outputs(): MIDIOutput[] {
     const access = this.engine.midiAccess();
-    const want = this.settings().output;
-    const out: MIDIOutput[] = [];
+    const ports: MIDIOutput[] = [];
     access?.outputs.forEach((o) => {
-      if (o.state !== 'disconnected' && (!want || o.name === want)) out.push(o);
+      if (o.state !== 'disconnected') ports.push(o);
     });
-    return out;
+    const names = ports.map((o) => o.name ?? 'MIDI output');
+    const { send } = clockTargets(names, this.engine.midiInputs(), this.settings());
+    return ports.filter((_, i) => send.includes(names[i]));
   }
 
   private send(data: number[], time?: number) {
@@ -209,7 +220,7 @@ export class MidiSync {
         if (this.transport.playing()) this.transport.stop();
         return;
       case 'position': {
-        const beat = sppBeats(msg.sixteenths) % this.transport.loopBeats();
+        const beat = this.transport.wrap(sppBeats(msg.sixteenths));
         this.nextBeat = beat;
         if (!this.following) this.transport.seek(beat);
         return;
@@ -232,7 +243,7 @@ export class MidiSync {
     if (++this.ticks % PPQN) return;
     // Once a beat: keep the song on the ticks, then the tempo.
     if (this.following && this.transport.playing()) {
-      const loop = this.transport.loopBeats();
+      const loop = this.transport.loopLength();
       const there =
         this.transport.beatNow() - ((performance.now() - time) * this.transport.bpm()) / 60000;
       if (Math.abs(loopDiff(there, beat, loop)) > DRIFT) this.transport.syncTo(beat, time);

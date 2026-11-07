@@ -4,7 +4,7 @@ import { type Cable, type Patch } from '../core/patch';
 import { BASE_MAX, BASE_MIN, type MidiEvent, noteName, parseMidi, shiftBase } from '../core/sound';
 import { PatchStore } from '../patch-store';
 import { Transport } from '../transport';
-import { type NoteEvent, type Playable, type Unit, isPlayable } from './unit';
+import { type NoteEvent, type Playable, type Unit, atTime, isPlayable } from './unit';
 import { createUnit, loadUnit } from './units';
 
 /** A note played by hand on a piece of gear: on (true) or off. */
@@ -213,7 +213,9 @@ export class AudioEngine {
    * don't take the keyboard, aren't reported to note listeners (so they aren't recorded again)
    * and are tracked apart from the same key held by hand.
    */
-  noteOn(note: number, only?: string, fromTrack = false, velocity = KEY_VELOCITY) {
+  noteOn(note: number, only?: string, fromTrack = false, velocity = KEY_VELOCITY, at?: number) {
+    if (at !== undefined && this.book(at, only, () => this.noteOn(note, only, fromTrack, velocity)))
+      return;
     this.start();
     const id = this.target(only);
     if (!id) return;
@@ -228,7 +230,9 @@ export class AudioEngine {
     if (!fromTrack) for (const l of this.listeners) l(id, note, true, velocity);
   }
 
-  noteOff(note: number, only?: string, fromTrack = false) {
+  /** `at`: an audio-clock time to play it at, booked ahead (MIDI tracks); see `book`. */
+  noteOff(note: number, only?: string, fromTrack = false, at?: number) {
+    if (at !== undefined && this.book(at, only, () => this.noteOff(note, only, fromTrack))) return;
     const key = `${fromTrack ? 'track:' : ''}${only ?? '*'}:${note}`;
     const id = this.sounding.get(key);
     if (!id) return;
@@ -238,6 +242,43 @@ export class AudioEngine {
     this.hold(id, note, false);
     this.thru(id, `key:${key}`, { type: 'off', voice: 0, note });
     if (!fromTrack) for (const l of this.listeners) l(id, note, false, 0);
+  }
+
+  /** Notes waiting on a timer because their gear can't book them ahead (see `book`). */
+  private readonly booked = new Set<ReturnType<typeof setTimeout>>();
+
+  /**
+   * Plays a note event at audio-clock time `at`. Gear that schedules everything from the audio
+   * clock (`Playable.timed`) and passes no notes on down a NOTE cable gets it now, booked at that
+   * exact time; anything else gets it from a timer when the time comes. False when `at` has
+   * already passed (play it now).
+   */
+  private book(at: number, only: string | undefined, fn: () => void): boolean {
+    const ctx = this.ctx;
+    if (!ctx || !(at > ctx.currentTime)) return false;
+    const id = this.target(only);
+    const unit = id ? this.units.get(id) : undefined;
+    const patch = this.store.patch();
+    const passesOn = patch.cables.some((c) => c.from.gear === id && isNoteCable(patch, c));
+    if (isPlayable(unit) && unit.timed && !passesOn) {
+      atTime(ctx, at, fn);
+      return true;
+    }
+    const timer = setTimeout(
+      () => {
+        this.booked.delete(timer);
+        fn();
+      },
+      (at - ctx.currentTime) * 1000,
+    );
+    this.booked.add(timer);
+    return true;
+  }
+
+  /** Drops notes still waiting on a timer (the song stopped). */
+  cancelBooked() {
+    for (const t of this.booked) clearTimeout(t);
+    this.booked.clear();
   }
 
   private readonly listeners = new Set<NoteListener>();
@@ -256,6 +297,18 @@ export class AudioEngine {
     this.cableNotes.clear();
     this.thruVoices.clear();
     this.held.set({});
+  }
+
+  /** Some gear's own sequencer is running (see `Unit.busy`). */
+  busy(): boolean {
+    for (const u of this.units.values()) if (u.busy) return true;
+    return false;
+  }
+
+  /** The kill switch: stops every sequencer on the floor and every note sounding. */
+  kill() {
+    for (const u of this.units.values()) u.kill();
+    this.allNotesOff();
   }
 
   /** Pitch wheel or MIDI pitch bend, -1…+1. */
@@ -296,11 +349,17 @@ export class AudioEngine {
 
   // ── Graph sync ────────────────────────────────────────
 
+  /** What kind of gear each unit was made for. */
+  private readonly unitKinds = new Map<string, GearKind>();
+
   private sync(patch: Patch) {
     const ctx = this.ctx!;
-    const ids = new Set(patch.gear.map((g) => g.id));
+    // Gear ids repeat between patches (a project, an import, an undo), so a unit is kept only
+    // while its id still holds the same kind of gear.
+    const kinds = new Map(patch.gear.map((g) => [g.id, g.kind]));
     for (const [id, unit] of this.units) {
-      if (ids.has(id)) continue;
+      if (kinds.get(id) === this.unitKinds.get(id)) continue;
+      this.unitKinds.delete(id);
       unit.dispose();
       for (const jack of Object.keys(unit.noteOuts)) unit.noteOuts[jack] = undefined;
       this.units.delete(id);
@@ -327,6 +386,7 @@ export class AudioEngine {
         unit.saveText = (key, value) => this.store.setText(id, key, value);
         unit.setTempo(untracked(this.transport.bpm));
         this.units.set(g.id, unit);
+        this.unitKinds.set(g.id, g.kind);
         added = true;
       }
       if (this.lastText.get(g.id) !== g.text) {

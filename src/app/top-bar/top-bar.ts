@@ -1,14 +1,19 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { AudioEngine } from '../audio/audio-engine';
+import { UndoHistory } from '../history';
 import { MidiSync } from '../midi-sync';
 import { PatchStore } from '../patch-store';
+import { type ProjectInfo, Projects, download } from '../projects';
 import { Recorder } from '../recorder';
 import { Transport } from '../transport';
 
 interface MenuItem {
   label: string;
   run: () => void;
-  disabled?: boolean;
+  /** Greyed out while this says so. */
+  disabled?: () => boolean;
+  /** Its keyboard shortcut, shown beside it. */
+  keys?: string;
 }
 
 @Component({
@@ -23,6 +28,12 @@ export class TopBar {
   protected readonly engine = inject(AudioEngine);
   protected readonly recorder = inject(Recorder);
   protected readonly sync = inject(MidiSync);
+  protected readonly projects = inject(Projects);
+  protected readonly history = inject(UndoHistory);
+  /** The project whose name is being edited in the list. */
+  protected readonly renaming = signal<string | null>(null);
+  /** The project waiting for a second press of DELETE. */
+  protected readonly confirming = signal<string | null>(null);
   protected readonly midiTitle = computed(() => {
     const inputs = this.engine.midiInputs();
     const outputs = this.engine.midiOutputs();
@@ -51,17 +62,42 @@ export class TopBar {
     {
       name: 'FILE',
       items: [
+        { label: 'Projects…', run: () => this.openMenu.set('PROJECTS') },
+        { label: 'New project', run: () => void this.projects.create() },
+        { label: 'Save', run: () => this.store.save(), keys: 'Ctrl+S' },
+        { label: 'Export project (.klinke)…', run: () => void this.projects.exportBundle() },
+        { label: 'Import project (.klinke)…', run: () => this.importBundle() },
+        { label: 'Export song (.json)…', run: () => this.projects.exportSong() },
+        { label: 'Import song (.json)…', run: () => this.importSong() },
+        { label: 'Export patch (.json)…', run: () => this.exportPatch() },
+        { label: 'Import patch (.json)…', run: () => this.importPatch() },
+        { label: 'Export mix (.wav)', run: () => void this.recorder.exportMix() },
         { label: 'New empty patch', run: () => this.store.reset(false) },
         { label: 'Load demo rig', run: () => this.store.reset(true) },
-        { label: 'Save', run: () => this.store.save() },
-        { label: 'Export patch (.json)…', run: () => this.exportPatch() },
-        { label: 'Export mix (.wav)', run: () => void this.recorder.exportMix() },
-        { label: 'Import patch (.json)…', run: () => this.importPatch() },
       ],
     },
     {
       name: 'EDIT',
-      items: [{ label: 'Delete selected gear', run: () => this.store.removeSelected() }],
+      items: [
+        {
+          label: 'Undo',
+          run: () => this.history.undo(),
+          disabled: () => !this.history.canUndo(),
+          keys: 'Ctrl+Z',
+        },
+        {
+          label: 'Redo',
+          run: () => this.history.redo(),
+          disabled: () => !this.history.canRedo(),
+          keys: 'Ctrl+Shift+Z',
+        },
+        {
+          label: 'Delete selected gear',
+          run: () => this.store.removeSelected(),
+          disabled: () => !this.store.selected(),
+          keys: 'Del',
+        },
+      ],
     },
     {
       name: 'PATCH',
@@ -87,13 +123,66 @@ export class TopBar {
   }
 
   protected pick(item: MenuItem) {
+    if (item.disabled?.()) return;
     this.openMenu.set(null);
     item.run();
   }
 
   protected closeMenu(e: PointerEvent) {
-    if (!(e.target as Element).closest?.('.menus, .compact, .midi, .midi-panel'))
+    if (
+      !(e.target as Element).closest?.('.menus, .compact, .midi, .midi-panel, .project, .projects')
+    ) {
       this.openMenu.set(null);
+      this.renaming.set(null);
+      this.confirming.set(null);
+    }
+  }
+
+  // ── Projects ──────────────────────────────────────────
+
+  protected toggleProjects() {
+    this.renaming.set(null);
+    this.confirming.set(null);
+    this.toggleMenu('PROJECTS');
+  }
+
+  private readonly injector = inject(Injector);
+
+  protected startRename(p: ProjectInfo) {
+    this.renaming.set(p.id);
+    afterNextRender(
+      () => document.querySelector<HTMLInputElement>('.projects .name-edit')?.select(),
+      { injector: this.injector },
+    );
+  }
+
+  protected rename(p: ProjectInfo, e: Event) {
+    const name = (e.target as HTMLInputElement).value;
+    this.renaming.set(null);
+    void this.projects.rename(p.id, name);
+  }
+
+  protected renameKey(e: KeyboardEvent) {
+    e.stopPropagation(); // typing a name mustn't play notes
+    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+    else if (e.key === 'Escape') {
+      (e.target as HTMLInputElement).value = '';
+      this.renaming.set(null);
+    }
+  }
+
+  /** DELETE asks once more before it deletes. */
+  protected remove(p: ProjectInfo) {
+    if (this.confirming() !== p.id) {
+      this.confirming.set(p.id);
+      return;
+    }
+    this.confirming.set(null);
+    void this.projects.remove(p.id);
+  }
+
+  protected when(ms: number): string {
+    return new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
   }
 
   protected bpmInput(e: Event) {
@@ -108,21 +197,35 @@ export class TopBar {
   }
 
   private exportPatch() {
-    const blob = new Blob([this.store.exportJson()], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'klinke-patch.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    download(this.store.exportJson(), 'klinke-patch.json', 'application/json');
   }
 
   private importPatch() {
+    this.pickFile(
+      'application/json,.json',
+      async (f) => void this.store.importJson(await f.text()),
+    );
+  }
+
+  private importSong() {
+    this.pickFile(
+      'application/json,.json',
+      async (f) => void this.projects.importSong(await f.text()),
+    );
+  }
+
+  protected importBundle() {
+    this.openMenu.set(null);
+    this.pickFile('.klinke', (f) => void this.projects.importBundle(f));
+  }
+
+  private pickFile(accept: string, use: (file: File) => void) {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'application/json,.json';
-    input.onchange = async () => {
+    input.accept = accept;
+    input.onchange = () => {
       const file = input.files?.[0];
-      if (file) this.store.importJson(await file.text());
+      if (file) use(file);
     };
     input.click();
   }

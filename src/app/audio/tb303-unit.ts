@@ -39,6 +39,8 @@ const VCA_RELEASE_TAU = 0.006;
 const SEQ_VOICE = 303_000;
 
 export class Tb303Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private s!: Tb303Settings;
   private readonly keys = new MonoKeys('last');
   private patterns: Pattern[] = patternsFromText(undefined);
@@ -160,6 +162,14 @@ export class Tb303Unit extends Unit implements Playable {
   override command(name: string) {
     if (name === 'run') this.running ? this.stop() : this.start();
     else if (name === 'stop') this.stop();
+  }
+
+  override get busy() {
+    return this.running;
+  }
+
+  override kill() {
+    if (this.running) this.stop();
   }
 
   // ── Keys ──────────────────────────────────────────────

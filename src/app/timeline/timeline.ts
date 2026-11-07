@@ -1,9 +1,13 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { GEAR } from '../core/gear';
 import type { Note } from '../core/notes';
-import { LOOP_BARS, SONG_BARS, SONG_BEATS, loopRepeats } from '../core/transport';
+import { OFFSET_MAX, OFFSET_MIN } from '../core/metronome';
+import { moveTake, recordedLength, trimTakeEnd, trimTakeStart, visiblePeaks } from '../core/takes';
+import { BEATS_PER_BAR, SONG_BARS, SONG_BEATS, loopRepeats } from '../core/transport';
 import { AudioEngine, playsNotes } from '../audio/audio-engine';
 import { PatchStore } from '../patch-store';
+import { Metronome } from '../metronome';
+import { RecSettings } from '../rec-settings';
 import { Recorder } from '../recorder';
 import { Transport, type Take, type Track } from '../transport';
 
@@ -11,12 +15,22 @@ import { Transport, type Take, type Track } from '../transport';
   selector: 'kl-timeline',
   templateUrl: './timeline.html',
   styleUrl: './timeline.scss',
+  host: { '[class.collapsed]': '!store.tracksOpen()' },
 })
 export class Timeline {
   protected readonly transport = inject(Transport);
-  private readonly store = inject(PatchStore);
+  protected readonly store = inject(PatchStore);
   private readonly engine = inject(AudioEngine);
   protected readonly recorder = inject(Recorder);
+  protected readonly rec = inject(RecSettings);
+  /** Started here: the metronome clicks under the timeline it keeps time for. */
+  private readonly metronome = inject(Metronome);
+  protected readonly OFFSET_MIN = OFFSET_MIN;
+  protected readonly OFFSET_MAX = OFFSET_MAX;
+  /** The REC settings panel (click, count-in, latency): where it opens, or null when shut. */
+  protected readonly recPanel = signal<{ left: number; top: number } | null>(null);
+  /** The take picked on the timeline, to move, trim or delete. */
+  protected readonly picked = signal<{ track: string; id: string } | null>(null);
   protected readonly bars = Array.from({ length: SONG_BARS }, (_, i) => i + 1);
   protected readonly flags = [
     { key: 'arm', label: 'R', title: 'Record arm' },
@@ -44,21 +58,70 @@ export class Timeline {
   ]);
   private readonly waves = new Map<string, string>();
 
-  /** Song loop slider positions: 1, 2, 4, 8, 16 bars. */
-  protected readonly LOOP_BARS = LOOP_BARS;
-  /** Track loop slider positions: OFF (follow the song), then 1, 2, 4, 8 bars. */
-  protected readonly TRACK_LOOPS = [0, 1, 2, 4, 8];
-  protected readonly songLoopIndex = computed(() =>
-    LOOP_BARS.indexOf(this.transport.loopBars() as (typeof LOOP_BARS)[number]),
+  /** The song loop as bars, e.g. "1–16" or "5–8". */
+  protected readonly loopLabel = computed(
+    () => `${this.transport.loopStart() + 1}–${this.transport.loopBars()}`,
   );
 
-  protected setSongLoop(e: Event) {
-    this.transport.setLoop(LOOP_BARS[Number((e.target as HTMLInputElement).value)]);
+  // ── Loop braces ───────────────────────────────────────
+
+  /** The bar line nearest the pointer, 0–16, measured across `el` (the ruler or a lane). */
+  private barAt(el: HTMLElement, clientX: number) {
+    const r = el.getBoundingClientRect();
+    return Math.min(SONG_BARS, Math.max(0, Math.round(((clientX - r.left) / r.width) * SONG_BARS)));
   }
 
-  protected setTrackLoop(t: Track, e: Event) {
-    const loop = this.TRACK_LOOPS[Number((e.target as HTMLInputElement).value)];
-    this.transport.updateTrack(t.id, () => ({ loop }));
+  /** Follows a drag until the pointer lets go, calling `move` with each new pointer x. */
+  private drag(e: PointerEvent, move: (x: number, m: PointerEvent) => void, end?: () => void) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (e.button !== 0) return;
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    const onMove = (m: PointerEvent) => move(m.clientX, m);
+    const up = () => {
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      end?.();
+    };
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  }
+
+  /** The song loop brace: drag an end to resize it, the middle to move it, in whole bars. */
+  protected dragSongLoop(e: PointerEvent, part: 'start' | 'end' | 'move') {
+    const ruler = (e.currentTarget as HTMLElement).closest('.ruler') as HTMLElement;
+    const t = this.transport;
+    const grab = this.barAt(ruler, e.clientX);
+    const [s0, e0] = [t.loopStart(), t.loopBars()];
+    this.drag(e, (x) => {
+      const bar = this.barAt(ruler, x);
+      if (part === 'start') t.setLoopWindow(Math.min(bar, e0 - 1), e0);
+      else if (part === 'end') t.setLoopWindow(s0, Math.max(bar, s0 + 1));
+      else {
+        const shift = Math.min(SONG_BARS - e0, Math.max(-s0, bar - grab));
+        t.setLoopWindow(s0 + shift, e0 + shift);
+      }
+    });
+  }
+
+  /**
+   * A track's loop brace: drag its end to set how many bars the track repeats; dragged out to
+   * the song loop's end (or past it) the track follows the song again.
+   */
+  protected dragTrackLoop(e: PointerEvent, t: Track) {
+    const lane = (e.currentTarget as HTMLElement).closest('.lane') as HTMLElement;
+    this.drag(e, (x) => {
+      const bar = Math.max(1, this.barAt(lane, x));
+      const loop = bar * BEATS_PER_BAR >= this.transport.loopBeats() ? 0 : bar;
+      if (loop !== t.loop) this.transport.updateTrack(t.id, () => ({ loop }));
+    });
+  }
+
+  protected clearTrackLoop(t: Track) {
+    this.transport.updateTrack(t.id, () => ({ loop: 0 }));
   }
 
   /** The track's own loop is in force (it's shorter than the song loop). */
@@ -67,7 +130,6 @@ export class Timeline {
   }
 
   protected trackLoopLabel(t: Track) {
-    if (!t.loop) return 'OFF';
     return this.looping(t) ? `${t.loop} BAR${t.loop > 1 ? 'S' : ''}` : 'SONG';
   }
 
@@ -80,11 +142,30 @@ export class Timeline {
     return (beats / SONG_BEATS) * 100;
   }
 
-  /** Click the ruler to move the playhead, snapped to the beat. */
-  protected seek(e: MouseEvent) {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const beat = Math.floor(((e.clientX - r.left) / r.width) * SONG_BEATS);
-    if (beat < this.transport.loopBeats()) this.transport.seek(beat);
+  /**
+   * The ruler: click to move the playhead (snapped to the beat); drag along it to draw a new song
+   * loop over the bars dragged across.
+   */
+  protected rulerDown(e: PointerEvent) {
+    const ruler = e.currentTarget as HTMLElement;
+    const r = ruler.getBoundingClientRect();
+    const x0 = e.clientX;
+    const from = this.barAt(ruler, x0);
+    let drawing = false;
+    this.drag(
+      e,
+      (x) => {
+        if (!drawing && Math.abs(x - x0) < r.width / SONG_BARS / 2) return;
+        drawing = true;
+        const to = this.barAt(ruler, x);
+        if (to !== from) this.transport.setLoopWindow(Math.min(from, to), Math.max(from, to));
+      },
+      () => {
+        if (drawing) return;
+        const beat = Math.floor(((x0 - r.left) / r.width) * SONG_BEATS);
+        if (beat < this.transport.loopBeats()) this.transport.seek(beat);
+      },
+    );
   }
 
   protected toggleType(t: Track) {
@@ -144,6 +225,87 @@ export class Timeline {
     return t.notes.filter((n) => n.start < loop);
   }
 
+  // ── Single takes ──────────────────────────────────────
+
+  protected isPicked(t: Track, take: Take) {
+    const p = this.picked();
+    return !!p && p.track === t.id && p.id === take.id;
+  }
+
+  /**
+   * Picks a take and drags it: its body moves it, its edges trim it (pulling an edge back out
+   * brings the trimmed audio back). Moves snap to sixteenths; hold Shift to move freely.
+   */
+  protected takeDown(e: PointerEvent, t: Track, take: Take, part: 'move' | 'start' | 'end') {
+    const lane = (e.currentTarget as HTMLElement).closest('.lane') as HTMLElement;
+    (e.currentTarget as HTMLElement).closest<HTMLElement>('.take')?.focus();
+    this.picked.set({ track: t.id, id: take.id });
+    const r = lane.getBoundingClientRect();
+    const beatAt = (x: number) => ((x - r.left) / r.width) * SONG_BEATS;
+    const grab = beatAt(e.clientX);
+    const spb = 60 / this.transport.bpm();
+    const loop = this.transport.trackLoop(t);
+    const full = recordedLength(take);
+    const end = take.start + take.duration / spb;
+    this.drag(e, (x, m) => {
+      const snap = (b: number) => (m.shiftKey ? b : Math.round(b * 4) / 4);
+      const d = beatAt(x) - grab;
+      const next =
+        part === 'move'
+          ? moveTake(take, snap(take.start + d), loop, spb)
+          : part === 'start'
+            ? trimTakeStart(take, snap(take.start + d), spb)
+            : trimTakeEnd(take, snap(end + d), full, loop, spb);
+      this.recorder.updateTake(t.id, take.id, () => next);
+    });
+  }
+
+  /** A picked take: Delete removes it, the arrows nudge it a sixteenth (Shift: a beat). */
+  protected takeKey(e: KeyboardEvent, t: Track, take: Take) {
+    const spb = 60 / this.transport.bpm();
+    const step = e.shiftKey ? 1 : 0.25;
+    if (e.key === 'Delete' || e.key === 'Backspace') this.removeTake(t, take);
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      const d = e.key === 'ArrowLeft' ? -step : step;
+      const loop = this.transport.trackLoop(t);
+      this.recorder.updateTake(t.id, take.id, (k) => moveTake(k, k.start + d, loop, spb));
+    } else if (e.key === 'Escape') this.picked.set(null);
+    else return;
+    e.preventDefault();
+    e.stopPropagation(); // not the floor's Delete (that removes gear)
+  }
+
+  protected removeTake(t: Track, take: Take) {
+    this.recorder.removeTake(t.id, take.id);
+    this.picked.set(null);
+  }
+
+  /** The part of the waveform that plays, as an SVG viewBox over the whole recording's peaks. */
+  protected waveBox(take: Take) {
+    const [a, b] = visiblePeaks(take);
+    return `${a} 0 ${Math.max(1, b - a)} 100`;
+  }
+
+  // ── REC settings ──────────────────────────────────────
+
+  protected toggleRecPanel(e: MouseEvent) {
+    if (this.recPanel()) return this.recPanel.set(null);
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // Opens above the button (the timeline sits at the bottom of the screen).
+    this.recPanel.set({ left: Math.max(8, r.left), top: r.top });
+  }
+
+  /** The latency the browser reports right now, in ms (for the panel). */
+  protected measuredLatency() {
+    const ctx = this.engine.context;
+    if (!ctx) return null;
+    return Math.round(((ctx.outputLatency || 0) + (ctx.baseLatency || 0)) * 1000);
+  }
+
+  protected setOffset(e: Event) {
+    this.rec.update({ offsetMs: Number((e.target as HTMLInputElement).value) });
+  }
+
   /** The take's waveform as one SVG path: a vertical line per peak, in a 100-tall box. */
   protected wave(take: Take) {
     let d = this.waves.get(take.id);
@@ -167,9 +329,5 @@ export class Timeline {
       )
     )
       this.recorder.clearTakes(t);
-  }
-
-  protected instrumentLabel(t: Track) {
-    return this.instruments().find((i) => i.id === t.instrument)?.label ?? 'NO INSTRUMENT';
   }
 }

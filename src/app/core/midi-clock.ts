@@ -184,3 +184,36 @@ export function parseMidiSettings(raw: unknown): MidiSettings {
     input: typeof r.input === 'string' ? r.input : '',
   };
 }
+
+/**
+ * A port's device, from its name: the input and output of one device usually share a name, or
+ * differ only by an IN / OUT word ("MIDIIN2 (mio)" / "MIDIOUT2 (mio)", "Port 1 In" / "Port 1 Out").
+ */
+export function portDevice(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/midi ?(in|out)(put)?/g, 'midi')
+    .replace(/\b(in|out|input|output)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Where clock out may go. Following an external clock while sending clock to the device it comes
+ * from makes a loop (each tick comes back as another tick, and the tempo runs away), so with
+ * SYNC EXT on, outputs on the device clock comes in from are left out: the chosen input, or any
+ * connected input when it's "any".
+ */
+export function clockTargets(
+  outputs: string[],
+  inputs: string[],
+  settings: MidiSettings,
+): { send: string[]; blocked: string[] } {
+  const wanted = outputs.filter((o) => !settings.output || o === settings.output);
+  if (settings.sync !== 'external') return { send: wanted, blocked: [] };
+  const from = new Set((settings.input ? [settings.input] : inputs).map(portDevice));
+  const send: string[] = [];
+  const blocked: string[] = [];
+  for (const o of wanted) (from.has(portDevice(o)) ? blocked : send).push(o);
+  return { send, blocked };
+}

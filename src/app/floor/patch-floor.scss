@@ -60,6 +60,8 @@
   color: var(--text);
   background: var(--panel);
   box-shadow: 0 0 0 2px var(--line);
+  // Clicking (or tapping) the name shows what the gear is.
+  cursor: help;
   &.out {
     color: var(--accent);
     i {
@@ -95,15 +97,18 @@
   z-index: 1;
 }
 .cable {
-  pointer-events: stroke;
   cursor: pointer;
   path {
     fill: none;
     stroke-linecap: square;
   }
+  // Only the hit path takes the pointer, and it leaves out the stretches over gear, so a cable
+  // crossing a panel never covers the knobs beneath it.
   .hit {
+    pointer-events: stroke;
     stroke: transparent;
     stroke-width: 16px;
+    stroke-linecap: round;
   }
   .shade {
     stroke: #0d0e12;
@@ -154,6 +159,10 @@
     inset 0 0 0 3px var(--cable),
     0 0 0 2px #0d0e12;
   cursor: crosshair;
+  // A plugged end can be picked up and carried to another jack.
+  &.plugged {
+    cursor: grab;
+  }
   &.in {
     box-shadow:
       inset 0 0 0 3px #d9d6cc,
@@ -259,8 +268,31 @@
     color: var(--accent);
   }
 }
+// Folds the tracks below away and back; it sits just right of FIT.
+.tracks-fold {
+  flex: none;
+  margin-left: -8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  font: 10px/1 var(--font-pixel);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  background: var(--panel);
+  cursor: pointer;
+  span {
+    font-size: 13px;
+  }
+  &:hover {
+    color: var(--text);
+  }
+}
 .zoom {
   flex: none;
+  margin-left: auto;
   display: flex;
   align-items: center;
   font: 12px/1 var(--font-pixel);
@@ -295,36 +327,6 @@
   }
 }
 
-.panes {
-  display: none;
-  flex: none;
-  gap: 4px;
-  margin-left: auto;
-  button {
-    height: 26px;
-    padding: 0 8px;
-    border: none;
-    font: 10px/1 var(--font-pixel);
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    background: var(--panel);
-    cursor: pointer;
-    &.on {
-      color: #1b1d24;
-      background: var(--cream);
-    }
-  }
-}
-.panes + .zoom {
-  margin-left: 0;
-}
-// Must match SMALL_LAYOUT in patch-store.ts.
-@media (max-width: 760px), (max-height: 560px) {
-  .panes {
-    display: flex;
-  }
-}
-
 @media (max-width: 700px) {
   .bar {
     gap: 6px;
@@ -346,9 +348,6 @@
 @media (max-width: 480px) {
   .hint.idle {
     display: none;
-  }
-  .panes {
-    margin-left: 0;
   }
   .zoom {
     margin-left: auto;

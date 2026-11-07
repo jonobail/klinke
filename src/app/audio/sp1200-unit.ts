@@ -57,6 +57,8 @@ const MESSAGE_MS = 2500;
 const FULL_VELOCITY = 100 / 127;
 
 export class Sp1200Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private p: Params = {};
   private readonly sounds = new Map<string, Sound>();
   private readonly zones: number[] = Array(ZONES).fill(0);

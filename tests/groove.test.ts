@@ -7,6 +7,7 @@ import {
   swingStep,
   swungNotes,
   swungStart,
+  unswungStart,
 } from '../src/app/core/groove.ts';
 import { SONG_BEATS } from '../src/app/core/transport.ts';
 
@@ -107,4 +108,18 @@ test('quantizeNotes keeps notes inside the song', () => {
   assert.ok(x.start + x.length <= SONG_BEATS);
   const [y] = quantizeNotes([n('y', 0.05)], '1/4', 1);
   assert.equal(y.start, 0);
+});
+
+test('recording against swing: a note played on a swung off-beat goes back onto the grid', () => {
+  for (const sw of [50, 60, 66, 75]) {
+    for (const at of [0, 0.25, 0.5, 0.75, 1, 1.25]) {
+      // Played exactly where it was heard comes back to its grid line.
+      near(unswungStart(swungStart(at, '1/16', sw), '1/16', sw), at);
+    }
+  }
+  // On-beats and plain notes are left alone; straight swing changes nothing.
+  assert.equal(unswungStart(0.5, '1/16', 66), 0.5);
+  assert.equal(unswungStart(0.31, '1/16', 50), 0.31);
+  // A little late on a swung off-beat stays a little late, relative to its line.
+  near(unswungStart(0.375 + 0.02, '1/16', 75), 0.25 + 0.02);
 });

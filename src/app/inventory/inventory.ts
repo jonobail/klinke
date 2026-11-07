@@ -17,9 +17,10 @@ const TILE_SMALL = { h: 40, w: 96 };
   imports: [GearView, HoverInfo],
   templateUrl: './inventory.html',
   styleUrl: './inventory.scss',
+  host: { '[class.collapsed]': '!store.shelfOpen()' },
 })
 export class Inventory {
-  private readonly store = inject(PatchStore);
+  protected readonly store = inject(PatchStore);
   protected readonly filters: Filter[] = ['all', 'synth', 'midi', 'pedal', 'rack', 'mixer'];
   /** Tab names, where they aren't just the category's. */
   protected readonly filterLabels: Partial<Record<Filter, string>> = { midi: 'NOTE FX' };

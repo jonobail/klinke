@@ -7,7 +7,7 @@ mockup (synth → overdrive → reverb → delay → 4ch mixer → MAIN • REC,
 Tick boxes as items land. Milestones are in build order: each one builds on the one before.
 Pure logic goes in `src/app/core/` with `node --test` coverage in `tests/`.
 
-**Status:** M0, M2, the MS-20, the Model D, the SH-101, the PS-3100, the MF-104, the 12 rack effects and the SP-1200 done, M1 mostly done. M3 audio recording and loops done, M4 sequencing done; hosted on GitHub Pages.
+**Status:** M0–M5 done (M2 has open items; M4 still needs a real-hardware clock check), with the MS-20, the Model D, the SH-101, the PS-3100, the MF-104, the 12 rack effects and the SP-1200; hosted on GitHub Pages.
 
 ---
 
@@ -20,7 +20,7 @@ Pure logic goes in `src/app/core/` with `node --test` coverage in `tests/`.
       feedback-loop checks, signal order, JSON parse with validation (`core/patch.ts`, tested)
 - [x] Transport maths: `bar.beat.sixteenth` counter, tempo, song loop (`core/transport.ts`, tested)
 
-## M1 Patch floor (UI) 🟡
+## M1 Patch floor (UI) ✅
 
 - [x] Top bar: logo, FILE / EDIT / PATCH / VIEW menus, transport, position counter, BPM entry, SAVE
 - [x] Inventory shelf with ALL / SYNTH / PEDAL / MIXER filters and live gear previews
@@ -41,13 +41,15 @@ Pure logic goes in `src/app/core/` with `node --test` coverage in `tests/`.
       the silent switch (playback audio session / silent media loop), resumes after interruptions;
       the AUDIO button pulses while sound is blocked. Checked in iPhone emulation, not yet on a
       real device
-- [ ] Cables are drawn over gear, so a cable crossing a panel can block clicks on the controls
-      beneath it (route cables under gear or fade them while pointing at a panel)
-- [ ] Hover info on touch screens (long-press is taken by drag / play today)
-- [ ] Drag a plugged cable end to move it to another jack
-- [ ] Unplug a cable from the keyboard (jack buttons already patch with Enter)
-- [ ] Undo / redo for patch edits
-- [ ] Stop gear overlapping when it's dropped or dragged (nudge to the nearest free spot)
+- [x] Cables no longer block the controls beneath them: only the stretches over bare floor take
+      clicks, so a cable crossing a panel lets clicks through to its knobs
+- [x] Hover info on touch screens: tap a gear's name tag for its info card
+- [x] Drag a plugged cable end to move it to another jack (drop on the floor to unplug, Esc cancels)
+- [x] Unplug a cable from the keyboard: Delete / Backspace on a plugged jack; jack labels say
+      what they're patched to
+- [x] Undo / redo (Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y, EDIT menu) for patch and timeline edits
+      (`core/history.ts`); quick changes and whole drags coalesce into one step
+- [x] Gear dropped or dragged onto other gear slides to the nearest free spot (`nearestFree`)
 - [x] Touch / tablet: fit-all zoom on small screens, pinch-zoom and two-finger pan, double-tap
       gear to zoom to it (empty floor to fit), one-finger knob / fader turning, multi-touch keys
       and pads (checked in emulation: iPhone 13, Pixel 7, iPad; not yet on a real device)
@@ -281,7 +283,7 @@ as its usual chain.
 - [ ] Split the gear panels (gear-view) into one component per instrument; its stylesheet is
       now 9 kB
 
-## M3 Record & arrange
+## M3 Record & arrange ✅
 
 MIDI tracks (done): a per-track AUD / MIDI switch; MIDI tracks play an instrument on the floor
 (`sequencer.ts` plays them, timer-dispatched every 5 ms) and record what you play on it while
@@ -290,10 +292,12 @@ armed and REC is on, snapping to a per-track grid (OFF, 1/4, 1/8, 1/16, 1/32). A
 (`klinke.song.v1`). Note maths in `core/notes.ts` (tested).
 
 - [x] MIDI tracks: instrument, live record (quantised), playback with mute / solo, piano roll
-- [ ] Sample-accurate MIDI playback (schedule on the audio clock instead of a 5 ms timer)
+- [x] Sample-accurate MIDI playback: a look-ahead scheduler books notes ~50 ms ahead on the audio
+      clock (`core/schedule.ts`, `look-ahead.ts`); note FX gear and NOTE OUT chains fall back to a
+      timer at the right moment
 - [x] Velocity: record it from MIDI and play it into instruments that respond to it (M4)
 - [x] Piano roll: box-select, copy / paste, velocity lane, zoom; replace (not only overdub) recording (M4)
-- [ ] Songs in FILE export / import (today only the patch is exported)
+- [x] Songs in FILE export / import (JSON: tempo, loop, tracks, notes; audio goes in `.klinke`)
 
 Audio tracks (done): each records MAIN MIX or any one gear's OUT. `recorder.ts` taps it with an
 AudioWorklet (`public/worklets/capture.js`, which also records silence so takes stay continuous),
@@ -310,9 +314,13 @@ in `core/wav.ts` (tested).
 - [x] **EXPORT MIX**: real-time bounce of the song → `klinke-mix.wav`
 - [x] Song loop (1–16 bars) and per-track loops: a track repeats its first N bars across the song;
       MIDI and audio record into the loop (`trackLoopBeats`, `loopRepeats` in `core/transport.ts`)
-- [ ] Metronome and count-in
-- [ ] Select, move and trim single takes; loop region on the ruler
-- [ ] Compensate output / input latency when recording against what you hear
+- [x] Metronome (accented downbeat, on the audio clock, never recorded) and a 0–2 bar count-in
+      (♩ settings beside LOOP; `core/metronome.ts`)
+- [x] Select, move (snap to 1/16, Shift free), trim and delete single takes (`core/takes.ts`);
+      drag along the ruler to draw a song loop
+- [x] Latency compensation: recorded MIDI shifts by the reported output latency plus a manual
+      offset. Audio takes are captured in-graph and aren't shifted, so a hand-played synth
+      recorded as audio still lands late by the output latency
 
 ## M4 Sequencing ✅
 
@@ -330,15 +338,17 @@ OUT). Groove maths in `core/groove.ts`, editing in `core/editing.ts`, clock math
 - [x] MIDI clock in / out: CLOCK OUT sends 24 PPQN with START / CONTINUE / STOP and song position;
       SYNC EXT follows an input's start, stop, song position and tempo (MIDI badge → panel)
 - [ ] Try the clock against real hardware (tested only with a simulated MIDI port)
-- [ ] Copy / paste buttons for touch; record with swing; guard against a clock loop through one
-      device used for both input and output
+- [x] COPY / PASTE / DUP / DEL buttons in the piano roll for touch; recording on a swung track
+      un-swings before quantising; CLOCK OUT skips the port SYNC EXT follows (matched by name)
 
-## M5 Projects & persistence
+## M5 Projects & persistence ✅
 
-- [ ] Projects in IndexedDB: patch, tracks, takes (audio blobs), tempo
-- [ ] Project list: new / open / rename / duplicate / delete; autosave
-- [ ] `.klinke` bundle export / import (patch + audio)
-- [ ] Undo history that covers the timeline as well as the patch
+- [x] Projects in IndexedDB: patch, tracks, takes (audio per project), tempo; the old
+      localStorage patch and song become the first project (`projects.ts`)
+- [x] Project list (click the project name or FILE → Projects…): new / open / rename / duplicate /
+      delete; autosave 1.5 s after changes stop; a reload reopens the last project
+- [x] `.klinke` bundle export / import: JSON header plus float32 PCM per take (`core/bundle.ts`)
+- [x] Undo history that covers the timeline as well as the patch (arm / mute / solo excluded)
 
 ## M6 More gear & polish
 

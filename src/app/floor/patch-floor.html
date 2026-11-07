@@ -23,7 +23,7 @@
           [style.top.px]="g.y * CELL"
           (pointerdown)="gearDown($event, g)"
         >
-          <span class="tag" [class.out]="g.kind === 'output'">
+          <span class="tag" data-info [class.out]="g.kind === 'output'">
             @if (g.kind === 'output') {
               <i></i>
             }
@@ -49,7 +49,7 @@
         @for (c of cables(); track c.id) {
           <g class="cable" [class.note]="c.note" (click)="store.unplug(c.id)">
             <title>click to unplug</title>
-            <path class="hit" [attr.d]="c.d" />
+            <path class="hit" [attr.d]="c.hit" />
             <path class="shade" [attr.d]="c.d" />
             <path class="wire" [attr.d]="c.d" />
           </g>
@@ -73,9 +73,13 @@
           [class.pending]="j.pending"
           [style.left.px]="j.x"
           [style.top.px]="j.y"
-          [attr.aria-label]="j.label"
-          [title]="j.label"
-          (pointerdown)="$event.stopPropagation()"
+          [attr.data-gear]="j.ref.gear"
+          [attr.data-jack]="j.ref.jack"
+          [attr.aria-label]="j.description"
+          [attr.aria-pressed]="j.pending"
+          [title]="j.description"
+          (pointerdown)="jackDown($event, j)"
+          (keydown)="jackKey($event, j)"
           (click)="jackClick($event, j)"
         ></button>
       }
@@ -87,35 +91,16 @@
   <p class="hint" [class.idle]="!store.message() && !store.pendingJack()" aria-live="polite">
     @if (store.message(); as m) {
       <span class="msg">{{ m }}</span>
+    } @else if (carry()) {
+      drop on a jack to move the cable · anywhere else unplugs it · esc to cancel
     } @else if (store.pendingJack()) {
       {{ coarse() ? 'tap' : 'click' }} another jack to patch · esc to cancel
     } @else if (coarse()) {
-      pinch or double-tap gear to zoom · double-tap the floor to fit · tap jacks to patch
+      tap jacks to patch · drag a plugged end to move it · tap a name for info · pinch to zoom
     } @else {
-      drag gear onto the floor · click jacks to patch · play keys A–; · Z/X octave
+      drag gear onto the floor · click jacks to patch · drag a plugged end to move it
     }
   </p>
-
-  <div class="panes" role="group" aria-label="Show">
-    <button
-      type="button"
-      [class.on]="store.shelfOpen()"
-      [attr.aria-pressed]="store.shelfOpen()"
-      title="Show the gear shelf"
-      (click)="store.shelfOpen.set(!store.shelfOpen())"
-    >
-      GEAR
-    </button>
-    <button
-      type="button"
-      [class.on]="store.tracksOpen()"
-      [attr.aria-pressed]="store.tracksOpen()"
-      title="Show the tracks"
-      (click)="store.tracksOpen.set(!store.tracksOpen())"
-    >
-      TRACKS
-    </button>
-  </div>
 
   <div class="zoom" role="group" aria-label="Zoom">
     <button type="button" aria-label="Zoom out" title="Zoom out" (click)="store.zoomBy(-1)">
@@ -133,4 +118,16 @@
       FIT
     </button>
   </div>
+
+  <button
+    type="button"
+    class="tracks-fold"
+    [title]="store.tracksOpen() ? 'Hide the tracks' : 'Show the tracks'"
+    [attr.aria-label]="store.tracksOpen() ? 'Hide the tracks' : 'Show the tracks'"
+    [attr.aria-expanded]="store.tracksOpen()"
+    (click)="store.tracksOpen.set(!store.tracksOpen())"
+  >
+    {{ store.tracksOpen() ? 'HIDE' : 'SHOW' }}
+    <span aria-hidden="true">{{ store.tracksOpen() ? '▾' : '▴' }}</span>
+  </button>
 </div>

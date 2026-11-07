@@ -19,6 +19,8 @@ import { type Params, type Playable, Unit, glide, holdAt } from './unit';
 const HARMONICS = 96;
 
 export class Ms20Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private readonly keys = new MonoKeys();
   private s!: Ms20Settings;
   /** Last note played; the VCOs stay on its pitch after release, as on the hardware. */

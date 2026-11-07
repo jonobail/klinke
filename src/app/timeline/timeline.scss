@@ -24,53 +24,86 @@
   margin-right: auto;
   white-space: nowrap;
 }
-.song-loop,
-.track-loop {
+.song-loop {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-right: auto;
   color: var(--muted);
   span {
     font-size: 10px;
   }
   b {
-    min-width: 2ch;
     font: 15px/1 var(--font-mono);
-    color: var(--text);
-  }
-  input {
-    width: 96px;
-    height: 14px;
-    margin: 0;
-    accent-color: var(--accent);
-    cursor: pointer;
+    color: var(--accent);
   }
 }
-.song-loop {
-  margin-right: auto;
+:host(.collapsed) {
+  display: none;
 }
-.track-loop {
+
+/* Loop braces, as in a DAW: the song loop above the ruler, each track's loop along its lane top. */
+.brace,
+.clip-loop {
   position: absolute;
-  top: 4px;
-  right: 6px;
-  z-index: 1;
-  padding: 2px 6px;
-  background: #111216e6;
-  box-shadow: 0 0 0 1px var(--line);
-  input {
-    width: 64px;
-  }
-  b {
-    min-width: 6ch;
-    font-size: 13px;
-    color: var(--muted);
-  }
-  &.on b {
-    color: var(--green);
+  top: 0;
+  z-index: 2;
+  touch-action: none;
+}
+.brace {
+  height: 10px;
+  background: var(--accent);
+  cursor: grab;
+  &:active {
+    cursor: grabbing;
   }
 }
-.lane.audio .track-loop {
-  right: 32px;
+.clip-loop {
+  left: 0;
+  height: 9px;
+  background: #3a3e4a;
+  b {
+    position: absolute;
+    right: 12px;
+    top: 0;
+    font: 8px/9px var(--font-pixel);
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  &.on {
+    background: #2f6b46;
+    b {
+      color: #dff7e6;
+    }
+  }
+}
+.grip {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+  &.start {
+    left: 0;
+  }
+  &.end {
+    right: 0;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    width: 2px;
+    background: #ffffffb0;
+  }
+  &.start::after {
+    left: 2px;
+  }
+  &.end::after {
+    right: 2px;
+  }
 }
 /* Past the song loop: never plays. */
 .beyond {
@@ -130,6 +163,7 @@
   border-bottom: 2px solid var(--line);
   cursor: pointer;
   span {
+    margin-top: 10px;
     padding-left: 10px;
     border-left: 2px solid var(--line);
     font: 17px/1 var(--font-mono);
@@ -149,7 +183,7 @@
 }
 .take {
   position: absolute;
-  top: 8px;
+  top: 11px;
   bottom: 8px;
   min-width: 2px;
   overflow: hidden;
@@ -183,16 +217,6 @@
     }
   }
 }
-.empty {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  translate: 0 -50%;
-  font: 16px/1 var(--font-mono);
-  letter-spacing: 0;
-  color: var(--muted);
-}
-
 .playhead {
   position: absolute;
   top: 0;
@@ -241,27 +265,20 @@
     top: 3px;
     font-size: 8px;
   }
-  // No room for hints beside the lane controls on a phone.
-  .lane .empty {
-    display: none;
-  }
-  .song-loop,
-  .track-loop {
+  .song-loop {
     gap: 3px;
     span {
       display: none;
     }
-    input {
-      width: 48px;
-    }
   }
-  .track-loop {
-    top: 2px;
-    padding: 1px 3px;
-    b {
-      min-width: 3ch;
-      font-size: 11px;
-    }
+  .brace {
+    height: 8px;
+  }
+  .ruler span {
+    margin-top: 8px;
+  }
+  .clip-loop b {
+    display: none;
   }
 }
 
@@ -286,7 +303,7 @@
   .source {
     position: absolute;
     left: 6px;
-    top: 4px;
+    top: 13px;
     z-index: 1;
     max-width: 180px;
     padding: 1px 2px;
@@ -299,7 +316,7 @@
   .clear {
     position: absolute;
     right: 6px;
-    top: 4px;
+    top: 13px;
     z-index: 1;
     width: 20px;
     height: 20px;
@@ -313,12 +330,6 @@
     &:hover {
       color: var(--accent);
     }
-  }
-  .empty {
-    top: auto;
-    bottom: 6px;
-    translate: none;
-    left: 6px;
   }
 }
 
@@ -338,7 +349,7 @@
   .instrument {
     position: absolute;
     left: 6px;
-    top: 4px;
+    top: 13px;
     max-width: 180px;
     padding: 1px 2px;
     border: none;
@@ -348,10 +359,134 @@
     box-shadow: 0 0 0 1px var(--line);
     z-index: 1;
   }
-  .empty {
-    top: auto;
-    bottom: 6px;
-    translate: none;
-    left: 6px;
+}
+
+/* Single takes: pick one to move it, trim its edges, or delete it. */
+.take[tabindex] {
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+  &:active {
+    cursor: grabbing;
+  }
+  &.picked {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    z-index: 1;
+  }
+  .edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    &.start {
+      left: 0;
+    }
+    &.end {
+      right: 0;
+    }
+  }
+  &:hover .edge,
+  &.picked .edge {
+    background: #ecdcb433;
+  }
+  .drop {
+    position: absolute;
+    top: 2px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    font: 10px/18px var(--font-pixel);
+    color: var(--text);
+    background: #a33a2e;
+    cursor: pointer;
+  }
+}
+
+/* The ♩ button: metronome on / off and the recording settings. */
+.rec-set {
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  font: inherit;
+  color: var(--muted);
+  background: var(--panel);
+  cursor: pointer;
+  white-space: nowrap;
+  &.on {
+    color: var(--bg);
+    background: var(--accent);
+  }
+}
+.rec-panel {
+  position: fixed;
+  z-index: 50;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 10px 12px 12px;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 6px 24px #0008;
+  header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  h2 {
+    margin: 0 auto 0 0;
+    font: inherit;
+    color: var(--accent);
+  }
+  .close {
+    border: none;
+    font: 16px/1 var(--font-pixel);
+    color: var(--muted);
+    background: none;
+    cursor: pointer;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0;
+    > span {
+      width: 72px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    button {
+      height: 24px;
+      padding: 0 8px;
+      border: none;
+      font: 10px/1 var(--font-pixel);
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      background: var(--bg);
+      cursor: pointer;
+      &.on {
+        color: var(--bg);
+        background: var(--accent);
+      }
+    }
+    input {
+      width: 64px;
+      height: 24px;
+      border: 1px solid var(--line);
+      font: 14px/1 var(--font-mono);
+      color: var(--text);
+      background: var(--bg);
+    }
+    small {
+      font: 13px/1 var(--font-mono);
+      color: var(--muted);
+    }
+  }
+  .hint {
+    margin: 2px 0 8px;
+    font: 13px/1.2 var(--font-mono);
+    letter-spacing: 0;
+    color: var(--muted);
   }
 }

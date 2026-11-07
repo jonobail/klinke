@@ -5,10 +5,15 @@ import { GEAR, type GearKind } from './core/gear';
 /** How long the pointer must rest on a piece of gear before its description appears. */
 const DELAY_MS = 1200;
 
+/** A press has to stay within this many px to count as a tap on the name. */
+const TAP_SLOP = 10;
+
 /**
  * Hover info for gear: rest the mouse on a piece of gear (on the floor or the shelf) and after a
  * moment a card shows its name, what it is and what it's for. Moving away or pressing anything
- * hides it. Screen readers get the same text as the element's description.
+ * hides it. Touch screens have no hover (and a long press drags or plays), so tapping an element
+ * marked `data-info` inside it (the name tag on the floor) shows the card straight away; so does
+ * clicking it with a mouse. Screen readers get the same text as the element's description.
  */
 @Directive({
   selector: '[klHoverInfo]',
@@ -16,7 +21,9 @@ const DELAY_MS = 1200;
     '[attr.aria-description]': 'text()',
     '(pointerenter)': 'enter($event)',
     '(pointermove)': 'move($event)',
-    '(pointerleave)': 'hide()',
+    '(pointerleave)': 'leave($event)',
+    '(pointerdown)': 'down($event)',
+    '(click)': 'click($event)',
   },
 })
 export class HoverInfo implements OnDestroy {
@@ -30,7 +37,31 @@ export class HoverInfo implements OnDestroy {
   private card?: HTMLElement;
   private x = 0;
   private y = 0;
+  /** Where a press on the name tag started (a drag by the tag isn't a tap). */
+  private press: { x: number; y: number } | null = null;
   private readonly dismiss = () => this.hide();
+
+  protected down(e: PointerEvent) {
+    const onTag = (e.target as Element).closest('[data-info]');
+    this.press = onTag ? { x: e.clientX, y: e.clientY } : null;
+  }
+
+  protected click(e: MouseEvent) {
+    const press = this.press;
+    this.press = null;
+    if (!press || !(e.target as Element).closest('[data-info]')) return;
+    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_SLOP) return;
+    this.hide();
+    this.x = e.clientX;
+    this.y = e.clientY;
+    this.show();
+  }
+
+  /** A touch "leaves" as the finger lifts: keep a card it opened until the next press. */
+  protected leave(e: PointerEvent) {
+    if (e.pointerType === 'mouse') this.hide();
+    else clearTimeout(this.timer);
+  }
 
   protected enter(e: PointerEvent) {
     if (e.pointerType !== 'mouse') return; // touch: a press means play or drag, not "tell me"

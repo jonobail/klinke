@@ -5,13 +5,16 @@ import {
   type Patch,
   type PatchError,
   addGear,
+  cableAt,
   connect,
   demoPatch,
   disconnect,
   emptyPatch,
   freeSpot,
+  moveCableEnd,
   moveGear,
   parsePatch,
+  placeGear,
   removeGear,
   setParam,
   setText,
@@ -48,8 +51,7 @@ export class PatchStore {
   /** Bumped to ask the floor to zoom out to fit all the gear (VIEW menu, loading a patch). */
   readonly fitRequest = signal(0);
   /**
-   * Whether the inventory shelf and the timeline show on small screens (the floor bar toggles
-   * them). Short screens, like a phone on its side, start with both put away.
+   * Whether the inventory shelf and the timeline are open (each folds away with its own arrow). Short screens, like a phone on its side, start with both put away.
    */
   readonly shelfOpen = signal(!matchMedia(SHORT_SCREEN).matches);
   readonly tracksOpen = signal(!matchMedia(SHORT_SCREEN).matches);
@@ -79,7 +81,31 @@ export class PatchStore {
   }
 
   move(id: string, x: number, y: number) {
+    const g = this.gesture;
+    if (g && !g.done && g.gear === id) g.at = performance.now();
+    else
+      this.gesture = {
+        key: `drag${++this.gestures}`,
+        gear: id,
+        at: performance.now(),
+        done: false,
+      };
     this.patch.update((p) => moveGear(p, id, x, y));
+  }
+
+  /** A gear drag in progress (many `move`s, then `settle`): undo takes it as one step. */
+  private gesture?: { key: string; gear: string; at: number; done: boolean };
+  private gestures = 0;
+
+  /**
+   * The undo group the latest change belongs to: the gear drag it's part of, if any. A drag that
+   * never settled (a pinch took over) stops counting after a while.
+   */
+  editGroup(now: number): string | undefined {
+    const g = this.gesture;
+    if (!g || now - g.at > 10_000) return undefined;
+    if (g.done) this.gesture = undefined;
+    return g.key;
   }
 
   remove(id: string) {
@@ -119,6 +145,27 @@ export class PatchStore {
     this.patch.update((p) => disconnect(p, cableId));
   }
 
+  /** Pulls out whatever cable is plugged into a jack (the keyboard's way to unplug). */
+  unplugAt(ref: JackRef): boolean {
+    const cable = cableAt(this.patch(), ref);
+    if (cable) this.unplug(cable.id);
+    return !!cable;
+  }
+
+  /** Moves one end of a cable to another jack (a dragged cable end); refused moves say why. */
+  moveCableEnd(cableId: string, end: 'from' | 'to', to: JackRef) {
+    const { patch, error } = moveCableEnd(this.patch(), cableId, end, to);
+    if (error) this.flash(ERRORS[error]);
+    else this.patch.set(patch);
+  }
+
+  /** Slides a box off any gear it was dropped on, to the nearest free spot. */
+  settle(id: string) {
+    if (this.gesture?.gear === id) this.gesture.done = true;
+    const g = this.patch().gear.find((x) => x.id === id);
+    if (g) this.patch.update((p) => placeGear(p, id, g.x, g.y));
+  }
+
   clearCables() {
     this.patch.update((p) => ({ ...p, cables: [] }));
   }
@@ -146,12 +193,36 @@ export class PatchStore {
   /** Counts saves, so the song (Transport) can save alongside the patch. */
   readonly saves = signal(0);
 
-  save() {
+  /**
+   * Saves the patch here (and, through `saves`, the song and the open project). Autosave is
+   * `quiet`: no message.
+   */
+  save(quiet = false) {
     const json = JSON.stringify(this.patch());
-    localStorage.setItem(STORAGE_KEY, json);
+    try {
+      localStorage.setItem(STORAGE_KEY, json);
+    } catch {
+      // Storage full or blocked: the project in IndexedDB still saves.
+    }
     this.savedJson.set(json);
     this.saves.update((n) => n + 1);
-    this.flash('patch saved');
+    if (!quiet) this.flash('saved');
+  }
+
+  /** Puts a whole new patch on the floor (an import, or opening a project). */
+  open(patch: Patch) {
+    this.patch.set(patch);
+    this.selected.set(null);
+    this.pendingJack.set(null);
+    this.loaded.update((n) => n + 1);
+  }
+
+  /** Undo / redo: puts an earlier patch back, letting go of anything that's no longer there. */
+  restore(patch: Patch) {
+    this.patch.set(patch);
+    const has = (id: string | undefined) => !!id && patch.gear.some((g) => g.id === id);
+    if (!has(this.selected() ?? undefined)) this.selected.set(null);
+    if (!has(this.pendingJack()?.gear)) this.pendingJack.set(null);
   }
 
   exportJson(): string {
@@ -164,10 +235,7 @@ export class PatchStore {
       this.flash("that file isn't a KLINKE patch");
       return false;
     }
-    this.patch.set(patch);
-    this.selected.set(null);
-    this.pendingJack.set(null);
-    this.loaded.update((n) => n + 1);
+    this.open(patch);
     return true;
   }
 

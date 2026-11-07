@@ -36,6 +36,8 @@ const TICK_MS = 25;
 const SEQ_VOICE = 606_000;
 
 export class Tr606Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private s!: Tr606Settings;
   private patterns: Pattern[] = patternsFromText(undefined);
   private chain = [0];
@@ -145,6 +147,14 @@ export class Tr606Unit extends Unit implements Playable {
   override command(name: string) {
     if (name === 'run') this.running ? this.stop() : this.start();
     else if (name === 'stop') this.stop();
+  }
+
+  override get busy() {
+    return this.running;
+  }
+
+  override kill() {
+    if (this.running) this.stop();
   }
 
   // ── Keys ──────────────────────────────────────────────

@@ -11,8 +11,22 @@
   --accent: #e8505b;
   --cable: #d8434f;
   --green: #6be08f;
-  --font-pixel: 'Silkscreen', ui-monospace, monospace;
-  --font-mono: 'VT323', ui-monospace, monospace;
+  // VAG Rounded Bold where it's installed, else Nunito ExtraBold, the nearest free match.
+  --font-pixel: 'KL Rounded', 'Nunito', sans-serif;
+  --font-mono: var(--font-pixel);
+  // The KLINKE wordmark keeps its pixel font.
+  --font-logo: 'Silkscreen', ui-monospace, monospace;
+}
+
+@font-face {
+  font-family: 'KL Rounded';
+  font-weight: 100 900;
+  src:
+    local('VAG Rounded Bold'),
+    local('VAGRounded-Bold'),
+    local('VAG Rounded Std Bold'),
+    local('VAGRoundedStd-Bold'),
+    local('VAGRounded BT');
 }
 
 * {
@@ -27,7 +41,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-pixel);
-  -webkit-font-smoothing: none;
+  -webkit-font-smoothing: antialiased;
   // No double-tap-to-zoom delay on buttons; the patch floor handles its own pinch and double tap.
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;

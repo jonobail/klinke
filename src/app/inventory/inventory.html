@@ -1,36 +1,61 @@
-<div class="side">
-  <h2>INVENTORY</h2>
-  <div class="filters" role="group" aria-label="Filter gear">
-    @for (f of filters; track f) {
+@if (!store.shelfOpen()) {
+  <button
+    type="button"
+    class="fold"
+    title="Show the gear shelf"
+    aria-label="Show the gear shelf"
+    [attr.aria-expanded]="false"
+    (click)="store.shelfOpen.set(true)"
+  >
+    INVENTORY <span class="arrow" aria-hidden="true">▾</span>
+  </button>
+} @else {
+  <div class="side">
+    <h2>
+      INVENTORY
       <button
         type="button"
-        [class.on]="filter() === f"
-        [attr.aria-pressed]="filter() === f"
-        (click)="filter.set(f)"
+        class="fold"
+        title="Hide the gear shelf"
+        aria-label="Hide the gear shelf"
+        [attr.aria-expanded]="true"
+        (click)="store.shelfOpen.set(false)"
       >
-        {{ filterLabels[f] ?? f.toUpperCase() }}
+        <span class="arrow" aria-hidden="true">▴</span>
       </button>
-    }
+    </h2>
+    <div class="filters" role="group" aria-label="Filter gear">
+      @for (f of filters; track f) {
+        <button
+          type="button"
+          [class.on]="filter() === f"
+          [attr.aria-pressed]="filter() === f"
+          (click)="filter.set(f)"
+        >
+          {{ filterLabels[f] ?? f.toUpperCase() }}
+        </button>
+      }
+    </div>
   </div>
-</div>
 
-<ul class="shelf">
-  @for (item of items(); track item.kind) {
-    <li>
-      <button
-        type="button"
-        class="tile"
-        draggable="true"
-        [klHoverInfo]="item.kind"
-        [attr.aria-label]="'Add ' + item.label + ' (click, or drag onto the floor)'"
-        (dragstart)="dragStart($event, item.kind)"
-        (click)="add(item.kind)"
-      >
-        <span class="frame" [style.width.px]="item.w" [style.height.px]="item.h">
-          <kl-gear-view [gear]="item.preview" [preview]="true" [style.scale]="item.scale" />
-        </span>
-        <span class="name">{{ item.label }}</span>
-      </button>
-    </li>
-  }
-</ul>
+  <ul class="shelf">
+    @for (item of items(); track item.kind) {
+      <li>
+        <button
+          type="button"
+          class="tile"
+          draggable="true"
+          [klHoverInfo]="item.kind"
+          [attr.aria-label]="'Add ' + item.label + ' (click, or drag onto the floor)'"
+          (dragstart)="dragStart($event, item.kind)"
+          (click)="add(item.kind)"
+        >
+          <span class="frame" [style.width.px]="item.w" [style.height.px]="item.h">
+            <kl-gear-view [gear]="item.preview" [preview]="true" [style.scale]="item.scale" />
+          </span>
+          <span class="name">{{ item.label }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+}

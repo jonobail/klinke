@@ -9,8 +9,10 @@ import {
   START,
   TempoEstimator,
   beatAtTicks,
+  clockTargets,
   loopDiff,
   parseMidiSettings,
+  portDevice,
   sppBeats,
   sppBytes,
   startPoint,
@@ -163,4 +165,27 @@ test('MIDI settings load safely', () => {
     parseMidiSettings({ clockOut: true, output: 'Port 2', sync: 'external', input: 'Keys' }),
     { clockOut: true, output: 'Port 2', sync: 'external', input: 'Keys' },
   );
+});
+
+test('a port pair of one device reads as the same device', () => {
+  assert.equal(portDevice('MIDIIN2 (mio)'), portDevice('MIDIOUT2 (mio)'));
+  assert.equal(portDevice('USB Midi Port 1 In'), portDevice('USB Midi Port 1 Out'));
+  assert.equal(portDevice('Digitakt'), portDevice('Digitakt'));
+  assert.notEqual(portDevice('Digitakt'), portDevice('Digitone'));
+});
+
+test("clock out doesn't go back to the device the clock comes from", () => {
+  const base = { ...DEFAULT_MIDI_SETTINGS, clockOut: true };
+  const outs = ['Digitakt', 'TR-8S'];
+  // Internal sync: everywhere asked for.
+  assert.deepEqual(clockTargets(outs, ['Digitakt'], base), { send: outs, blocked: [] });
+  assert.deepEqual(clockTargets(outs, [], { ...base, output: 'TR-8S' }).send, ['TR-8S']);
+  // Following the Digitakt: not back to it.
+  const ext = { ...base, sync: 'external' as const, input: 'Digitakt' };
+  assert.deepEqual(clockTargets(outs, ['Digitakt', 'TR-8S'], ext), {
+    send: ['TR-8S'],
+    blocked: ['Digitakt'],
+  });
+  // Any input: every device that could be sending clock is left out.
+  assert.deepEqual(clockTargets(outs, ['Digitakt', 'TR-8S'], { ...ext, input: '' }).blocked, outs);
 });

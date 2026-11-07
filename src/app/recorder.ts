@@ -52,7 +52,13 @@ export class Recorder {
       ts
         .filter((t) => t.type === 'audio' && !t.mute && (!solo || t.solo) && !(rec && t.arm))
         .flatMap((t) =>
-          t.takes.map((k) => [k.id, k.start, k.duration, this.transport.trackLoop(t)]),
+          t.takes.map((k) => [
+            k.id,
+            k.start,
+            k.duration,
+            this.transport.trackLoop(t),
+            k.offset ?? 0,
+          ]),
         ),
     ]);
   });
@@ -148,6 +154,9 @@ export class Recorder {
         );
         start = anchor.beat;
       }
+      // No latency shift here: the take is captured inside the audio graph, sample-aligned with
+      // the clock, so what the song plays lands exactly. (Notes played by hand are shifted when
+      // they're recorded as MIDI; see `Sequencer`.)
       // Takes sit at their place within the track's loop, and can't run past its end.
       start %= loop;
       const room = Math.round(((loop - start) * 60 * ctx.sampleRate) / anchor.bpm);
@@ -170,6 +179,21 @@ export class Recorder {
       this.transport.updateTrack(trackId, (t) => ({ takes: [...t.takes, take] }));
       this.transport.save();
     }
+  }
+
+  /** Changes one take (moved or trimmed on the timeline). */
+  updateTake(trackId: string, takeId: string, change: (k: Take) => Take) {
+    this.transport.updateTrack(trackId, (t) => ({
+      takes: t.takes.map((k) => (k.id === takeId ? change(k) : k)),
+    }));
+  }
+
+  /**
+   * Takes one take off its track. Its audio stays in storage until nothing refers to it (undo can
+   * bring the take back); unused audio is cleared out on the next start.
+   */
+  removeTake(trackId: string, takeId: string) {
+    this.transport.updateTrack(trackId, (t) => ({ takes: t.takes.filter((k) => k.id !== takeId) }));
   }
 
   clearTakes(track: Track) {
@@ -233,9 +257,9 @@ export class Recorder {
     if (!bus || !this.engine.running()) return;
     const [song, list] = JSON.parse(this.playable()) as [
       number,
-      [string, number, number, number][],
+      [string, number, number, number, number][],
     ];
-    for (const [id, start, duration, loop] of list) {
+    for (const [id, start, duration, loop, trim] of list) {
       void this.buffer(id).then((buf) => {
         if (!buf || gen !== this.generation) return;
         // Anchor per take: buffers loading from storage arrive a moment later.
@@ -251,7 +275,7 @@ export class Recorder {
           src.connect(bus);
           const lead = Math.max(0, from - a.beat) * spb;
           const offset = Math.max(0, a.beat - from) * spb;
-          src.start(a.time + lead, offset, (end - Math.max(from, a.beat)) * spb);
+          src.start(a.time + lead, trim + offset, (end - Math.max(from, a.beat)) * spb);
           this.playing.push(src);
         }
       });
@@ -260,11 +284,18 @@ export class Recorder {
 
   // ── EXPORT MIX ────────────────────────────────────────
 
-  /** How much of the song to bounce: through the last note or take, plus a bar for tails. */
-  private songBeats(): number {
+  /**
+   * What to bounce, in beats: a song loop window exactly (so the file loops cleanly), else from
+   * the top through the last note or take, plus a bar for tails.
+   */
+  private exportRange(): { from: number; to: number } {
     const song = this.transport.loopBeats();
-    // A shorter song loop is exported exactly, so the file loops cleanly.
-    if (song < SONG_BEATS) return song;
+    const from = this.transport.loopStartBeats();
+    if (from > 0 || song < SONG_BEATS) return { from, to: song };
+    return { from: 0, to: this.songBeats(song) };
+  }
+
+  private songBeats(song: number): number {
     const spb = 60 / this.transport.bpm();
     const ends = this.transport.tracks().flatMap((t) => {
       const content = t.notes.length + t.takes.length > 0;
@@ -290,13 +321,14 @@ export class Recorder {
     }
     if (this.transport.recording()) this.transport.record();
     if (this.transport.playing()) this.transport.stop();
-    const beats = this.songBeats();
+    const { from, to } = this.exportRange();
+    const beats = to - from;
     this.exporting.set(0);
     let cancelled = false;
     this.cancelExport = () => (cancelled = true);
     try {
       const capture = await this.engine.capture('main');
-      this.transport.seek(0);
+      this.transport.seek(from);
       this.transport.play();
       const a = this.anchor()!;
       const epoch = this.transport.epoch();
@@ -304,10 +336,10 @@ export class Recorder {
         const timer = setInterval(() => {
           const at = this.transport.beatNow();
           const wrapped = this.transport.epoch() !== epoch;
-          if (cancelled || !this.transport.playing() || wrapped || at >= beats) {
+          if (cancelled || !this.transport.playing() || wrapped || at >= to) {
             clearInterval(timer);
             resolve();
-          } else this.exporting.set(at / beats);
+          } else this.exporting.set((at - from) / beats);
         }, 50);
       });
       const stopped = !this.transport.playing();

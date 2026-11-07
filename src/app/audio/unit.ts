@@ -43,6 +43,24 @@ export function holdAt(param: AudioParam, t: number) {
   }
 }
 
+/**
+ * Runs `fn` as if the audio clock read `time`: every `ctx.currentTime` read inside it (envelopes,
+ * one-shots, the time stamps sent to voice worklets) gets `time`, so a note booked ahead lands on
+ * that exact sample. A time already past runs as it is. This is how MIDI tracks are scheduled
+ * ahead without every unit taking a time argument (see `Playable.timed`).
+ */
+export function atTime<T>(ctx: BaseAudioContext, time: number, fn: () => T): T {
+  if (!(time > ctx.currentTime)) return fn();
+  const own = Object.getOwnPropertyDescriptor(ctx, 'currentTime');
+  Object.defineProperty(ctx, 'currentTime', { configurable: true, get: () => time });
+  try {
+    return fn();
+  } finally {
+    if (own) Object.defineProperty(ctx, 'currentTime', own);
+    else delete (ctx as { currentTime?: number }).currentTime;
+  }
+}
+
 export abstract class Unit {
   readonly inputs: Record<string, AudioNode> = {};
   /** The `out` jack. */
@@ -102,6 +120,14 @@ export abstract class Unit {
   /** A front-panel action that isn't a stored setting (e.g. "arm sampling"). */
   command(_name: string): void {}
 
+  /** Its own sequencer is running (the TB-303's, the TR-606's): Space stops it. */
+  get busy(): boolean {
+    return false;
+  }
+
+  /** The kill switch: stops the unit's own sequencer, if it has one. */
+  kill(): void {}
+
   /** What recording this gear captures: its OUT jack (MAIN • REC overrides it with the mix). */
   get tap(): AudioNode | undefined {
     return this.output;
@@ -135,6 +161,12 @@ export interface Playable {
   noteOn(note: number, step: number, velocity?: number): void;
   noteOff(note: number): void;
   allNotesOff(): void;
+  /**
+   * Notes can be booked ahead (see `atTime`): everything the unit does for a note it schedules
+   * from `ctx.currentTime`, with no timers of its own. Units without it are played on time
+   * from a timer instead.
+   */
+  readonly timed?: boolean;
   /** Pitch wheel / MIDI pitch bend, -1…+1 (0 = centre). */
   pitchBend(amount: number): void;
 }

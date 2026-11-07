@@ -31,6 +31,8 @@ const LOOKAHEAD = 0.1;
 const TICK_MS = 25;
 
 export class Sh2Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private s!: Sh2Settings;
   private readonly keys = new MonoKeys('low');
   private held = 0;

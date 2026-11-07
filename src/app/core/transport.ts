@@ -9,12 +9,24 @@ export const BPM_MAX = 300;
 export const clampBpm = (bpm: number) =>
   Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(bpm * 10) / 10));
 
-/** Loop lengths the song and each track can take, in bars. */
-export const LOOP_BARS = [1, 2, 4, 8, 16] as const;
+/**
+ * A song position run on past the loop end comes round to the loop start (a position before the
+ * loop start plays on into the loop, as in a DAW).
+ */
+export function wrapBeat(beat: number, loopStart: number, loopEnd: number): number {
+  if (beat < loopEnd) return beat;
+  const len = loopEnd - loopStart;
+  return len > 0 ? loopStart + ((beat - loopEnd) % len) : loopStart;
+}
 
-/** Beats elapsed after `seconds` at a tempo, wrapping at the end of the song loop. */
-export const beatsAfter = (startBeat: number, seconds: number, bpm: number, loop = SONG_BEATS) =>
-  (startBeat + (seconds * bpm) / 60) % loop;
+/** Beats elapsed after `seconds` at a tempo, wrapping round the song loop. */
+export const beatsAfter = (
+  startBeat: number,
+  seconds: number,
+  bpm: number,
+  loop = SONG_BEATS,
+  loopStart = 0,
+) => wrapBeat(startBeat + (seconds * bpm) / 60, loopStart, loop);
 
 /**
  * How many beats a track repeats over: its own loop (in bars; 0 = off) when that's shorter than
@@ -30,11 +42,19 @@ export function loopRepeats(loop: number, songBeats: number): number[] {
   return out;
 }
 
-/** Nearest allowed loop length (bars) to `bars`; `withOff` lets 0 (no track loop) through. */
+/** A loop length or end in whole bars, 1–16; `withOff` lets 0 (no track loop) through. */
 export function clampLoop(bars: unknown, withOff: boolean): number {
   const n = Number(bars);
   if (withOff && n === 0) return 0;
-  return LOOP_BARS.includes(n as (typeof LOOP_BARS)[number]) ? n : withOff ? 0 : SONG_BARS;
+  if (!Number.isFinite(n) || n < 1) return withOff ? 0 : SONG_BARS;
+  return Math.min(SONG_BARS, Math.round(n));
+}
+
+/** A song loop window in whole bars: start 0–15, end start+1–16. */
+export function clampWindow(start: unknown, end: unknown): { start: number; end: number } {
+  const e = clampLoop(end, false);
+  const s = Number(start);
+  return { start: Number.isFinite(s) ? Math.min(e - 1, Math.max(0, Math.round(s))) : 0, end: e };
 }
 
 /** Bar.beat.sixteenth, one-based, the way the counter shows it: `006.3.1`. */

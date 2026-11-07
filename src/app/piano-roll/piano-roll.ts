@@ -538,13 +538,23 @@ export class PianoRoll {
     return false;
   }
 
-  private copy() {
+  /** Something has been copied, so PASTE has something to paste. */
+  protected readonly canPaste = signal(!!clipboard);
+
+  /** The DEL button: removes the selected notes (Delete / Backspace on a keyboard). */
+  protected deleteSelected() {
+    const sel = this.sel();
+    if (sel.size) this.edit((notes) => ({ notes: deleteNotes(notes, sel) }));
+  }
+
+  protected copy() {
     const clip = copyNotes(this.notes(), this.sel(), this.grid());
     clipboard = clip && { clip, at: clip.origin + clip.span };
+    this.canPaste.set(!!clipboard);
   }
 
   /** Pastes right after the copied block, then after the last paste. */
-  private paste() {
+  protected paste() {
     const c = clipboard;
     if (!c) return;
     if (c.at >= SONG_BEATS) {
@@ -557,7 +567,7 @@ export class PianoRoll {
     c.at += c.clip.span;
   }
 
-  private duplicate() {
+  protected duplicate() {
     const out = duplicateNotes(this.notes(), this.sel(), this.grid(), newId);
     if (!out.ids.size) return;
     this.edit(() => ({ notes: out.notes }));

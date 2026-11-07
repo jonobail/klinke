@@ -6,9 +6,11 @@ import {
   beatsAfter,
   clampBpm,
   clampLoop,
+  clampWindow,
   formatPosition,
   loopRepeats,
   trackLoopBeats,
+  wrapBeat,
 } from '../src/app/core/transport.ts';
 
 test('position counter reads bar.beat.sixteenth', () => {
@@ -37,7 +39,23 @@ test('song and track loops', () => {
   assert.deepEqual(loopRepeats(8, 32), [0, 8, 16, 24]);
   assert.deepEqual(loopRepeats(64, 16), [0]);
   assert.equal(clampLoop(4, false), 4);
-  assert.equal(clampLoop(3, false), 16);
+  assert.equal(clampLoop(3, false), 3); // any whole number of bars
+  assert.equal(clampLoop(2.6, false), 3);
+  assert.equal(clampLoop(40, false), 16);
+  assert.equal(clampLoop('x', false), 16);
   assert.equal(clampLoop(0, true), 0);
   assert.equal(clampLoop('x', true), 0);
+});
+
+test('the song loop is a window: past its end the song comes round to its start', () => {
+  assert.equal(wrapBeat(10, 8, 16), 10);
+  assert.equal(wrapBeat(16, 8, 16), 8);
+  assert.equal(wrapBeat(21, 8, 16), 13);
+  assert.equal(wrapBeat(2, 8, 16), 2); // before the window: plays on into it
+  assert.equal(beatsAfter(14, 2, 120, 16, 8), 10); // 4 beats on from 14: 18 → 10
+  assert.equal(beatsAfter(14, 2, 120, 16), 2); // no loop start: round to the top
+  assert.deepEqual(clampWindow(2, 6), { start: 2, end: 6 });
+  assert.deepEqual(clampWindow(9, 6), { start: 5, end: 6 }); // start stays before the end
+  assert.deepEqual(clampWindow(-3, 99), { start: 0, end: 16 });
+  assert.deepEqual(clampWindow('x', 4), { start: 0, end: 4 });
 });

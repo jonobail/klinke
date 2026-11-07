@@ -2,9 +2,11 @@ import { Component, inject, isDevMode } from '@angular/core';
 import { AudioEngine } from './audio/audio-engine';
 import { KEY_NOTES } from './core/sound';
 import { PatchFloor } from './floor/patch-floor';
+import { UndoHistory } from './history';
 import { Inventory } from './inventory/inventory';
 import { PatchStore } from './patch-store';
 import { PianoRoll } from './piano-roll/piano-roll';
+import { Projects } from './projects';
 import { Recorder } from './recorder';
 import { Sequencer } from './sequencer';
 import { Timeline } from './timeline/timeline';
@@ -52,15 +54,9 @@ import { Transport } from './transport';
       :host {
         grid-template-rows: auto auto minmax(120px, 1fr) auto auto;
       }
-      :host(.no-shelf) kl-inventory,
-      :host(.no-tracks) kl-timeline {
-        display: none;
-      }
     }
   `,
   host: {
-    '[class.no-shelf]': '!store.shelfOpen()',
-    '[class.no-tracks]': '!store.tracksOpen()',
     '(document:keydown)': 'keyDown($event)',
     '(document:keyup)': 'keyUp($event)',
     '(window:blur)': 'engine.allNotesOff()',
@@ -73,6 +69,9 @@ export class App {
   private readonly sequencer = inject(Sequencer);
   private readonly recorder = inject(Recorder);
   protected readonly engine = inject(AudioEngine);
+  private readonly history = inject(UndoHistory);
+  /** Keeps the open project saved (constructed here so autosave runs from the start). */
+  private readonly projects = inject(Projects);
 
   constructor() {
     // Browsers only let audio start inside a user gesture, and iOS only counts the end of a
@@ -100,6 +99,15 @@ export class App {
   protected keyDown(e: KeyboardEvent) {
     const t = e.target as HTMLElement;
     if (t.closest('input, textarea, select')) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'z' || key === 'y') {
+        e.preventDefault();
+        if (key === 'y' || e.shiftKey) this.history.redo();
+        else this.history.undo();
+        return;
+      }
+    }
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
       this.store.save();
@@ -114,10 +122,16 @@ export class App {
     } else if (e.code === 'KeyZ' || e.code === 'KeyX') {
       if (!e.repeat) this.engine.shiftOctave(e.code === 'KeyZ' ? -1 : 1);
     } else if (e.key === ' ') {
-      // Space is the transport everywhere (Enter still presses a focused button).
+      // Space is the transport everywhere (Enter still presses a focused button), and the kill
+      // switch: stopping stops every drum machine and sequencer and every note too. With the
+      // song stopped but a sequencer running, it just stops them.
       e.preventDefault();
       this.engine.start();
-      this.transport.toggle();
+      if (this.transport.playing()) {
+        this.transport.stop();
+        this.engine.kill();
+      } else if (this.engine.busy()) this.engine.kill();
+      else this.transport.play();
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       this.store.removeSelected();
     } else if (e.key === 'Escape') {

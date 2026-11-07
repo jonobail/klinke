@@ -47,6 +47,8 @@ interface Voice {
 }
 
 export class Ps3100Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private s!: Ps3100Settings;
   private readonly voices = new Map<number, Voice>();
   private readonly pulseWaves = new Map<number, PeriodicWave>();

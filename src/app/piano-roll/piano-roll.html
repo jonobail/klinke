@@ -40,6 +40,44 @@
     >
       SELECT
     </button>
+    <span class="group" role="group" aria-label="Edit the selection">
+      <button
+        type="button"
+        class="tool"
+        title="Copy the selected notes (Ctrl+C)"
+        [disabled]="!sel().size"
+        (click)="copy()"
+      >
+        COPY
+      </button>
+      <button
+        type="button"
+        class="tool"
+        title="Paste after the copy, then after each paste (Ctrl+V)"
+        [disabled]="!canPaste()"
+        (click)="paste()"
+      >
+        PASTE
+      </button>
+      <button
+        type="button"
+        class="tool"
+        title="Duplicate the selected notes after themselves (Ctrl+D)"
+        [disabled]="!sel().size"
+        (click)="duplicate()"
+      >
+        DUP
+      </button>
+      <button
+        type="button"
+        class="tool"
+        title="Delete the selected notes (Delete)"
+        [disabled]="!sel().size"
+        (click)="deleteSelected()"
+      >
+        DEL
+      </button>
+    </span>
     <span class="group">
       <button
         type="button"
@@ -55,7 +93,9 @@
         }
       </select>
     </span>
-    <label title="Swing: delays every other grid step (50% is straight)">
+    <label
+      title="Swing: delays every other grid step (50% is straight). Notes recorded while it swings are taken off the swing, so they play back where you played them"
+    >
       SWING
       <input
         type="range"

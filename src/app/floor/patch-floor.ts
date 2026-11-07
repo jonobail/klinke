@@ -15,9 +15,11 @@ import {
   CELL,
   type Gear,
   type JackRef,
+  cableHitPath,
   cablePath,
   cableAt,
   drawnExtent,
+  gearRect,
   jackPoint,
 } from '../core/patch';
 import {
@@ -62,6 +64,21 @@ interface JackView {
   /** A cable is being patched from a jack this one can't take (audio vs NOTE). */
   dim: boolean;
   label: string;
+  /** The label plus what the jack is patched to, for screen readers and the tooltip. */
+  description: string;
+}
+
+/** A plugged cable end picked up off its jack and carried to another one. */
+interface Carry {
+  pointerId: number;
+  cableId: string;
+  /** Which end is being carried; the other stays plugged in. */
+  end: 'from' | 'to';
+  fixed: JackRef;
+  sx: number;
+  sy: number;
+  /** Mouse drags pick the end up at once; a touch waits for SLOP px of travel. */
+  lifted: boolean;
 }
 
 interface Point {
@@ -148,18 +165,30 @@ export class PatchFloor {
   private drag: GearDrag | null = null;
   private tap: Tap | null = null;
   private lastTap: Tap | null = null;
+  /** The cable end being dragged to another jack (its cable is hidden meanwhile). */
+  protected readonly carry = signal<Carry | null>(null);
+  /** The click that ends a cable-end drag mustn't also pick the jack up. */
+  private swallowJackUntil = 0;
 
   protected readonly cables = computed(() => {
     const p = this.store.patch();
+    const carried = this.carry()?.cableId;
     const byId = new Map(p.gear.map((g) => [g.id, g]));
-    return p.cables.map((c) => ({
-      id: c.id,
-      note: isNoteJack(byId.get(c.from.gear)!.kind, c.from.jack),
-      d: cablePath(
-        jackPoint(byId.get(c.from.gear)!, c.from.jack),
-        jackPoint(byId.get(c.to.gear)!, c.to.jack),
-      ),
-    }));
+    // Cables can only be clicked where they're clear of the gear, so the knobs under a cable
+    // that crosses a panel still turn.
+    const boxes = p.gear.map(gearRect);
+    return p.cables
+      .filter((c) => c.id !== carried)
+      .map((c) => {
+        const a = jackPoint(byId.get(c.from.gear)!, c.from.jack);
+        const b = jackPoint(byId.get(c.to.gear)!, c.to.jack);
+        return {
+          id: c.id,
+          note: isNoteJack(byId.get(c.from.gear)!.kind, c.from.jack),
+          d: cablePath(a, b),
+          hit: cableHitPath(a, b, boxes),
+        };
+      });
   });
 
   protected readonly jacks = computed<JackView[]>(() => {
@@ -167,20 +196,32 @@ export class PatchFloor {
     const pending = this.store.pendingJack();
     const pendingKind = pending && p.gear.find((g) => g.id === pending.gear)?.kind;
     const pendingNote = pendingKind ? isNoteJack(pendingKind, pending.jack) : null;
+    const byId = new Map(p.gear.map((g) => [g.id, g]));
+    const jackName = (ref: JackRef) => {
+      const g = byId.get(ref.gear)!;
+      const j = jackDef(g.kind, ref.jack)!;
+      const note = j.signal === 'note';
+      return `${GEAR[g.kind].label} ${j.label ?? (note ? `NOTE ${j.dir.toUpperCase()}` : j.id.toUpperCase())}`;
+    };
     return p.gear.flatMap((g) =>
       GEAR[g.kind].jacks.map((j) => {
         const ref = { gear: g.id, jack: j.id };
-        const note = j.signal === 'note';
-        const name = j.label ?? (note ? `NOTE ${j.dir.toUpperCase()}` : j.id.toUpperCase());
+        const cable = cableAt(p, ref);
+        const label = jackName(ref);
+        const other =
+          cable && (cable.from.gear === g.id && cable.from.jack === j.id ? cable.to : cable.from);
         return {
           ref,
           dir: j.dir,
           ...jackPoint(g, j.id),
-          plugged: !!cableAt(p, ref),
+          plugged: !!cable,
           pending: pending?.gear === g.id && pending.jack === j.id,
-          note,
-          dim: pendingNote !== null && pendingNote !== note,
-          label: `${GEAR[g.kind].label} ${name}`,
+          note: j.signal === 'note',
+          dim: pendingNote !== null && pendingNote !== (j.signal === 'note'),
+          label,
+          description: other
+            ? `${label}, patched to ${jackName(other)} (Delete unplugs)`
+            : `${label}, empty`,
         };
       }),
     );
@@ -590,7 +631,11 @@ export class PatchFloor {
       if (u.pointerId !== drag.pointerId) return;
       cancelAnimationFrame(drag.raf);
       drag.raf = 0;
-      if (this.drag === drag) this.drag = null;
+      if (this.drag === drag) {
+        this.drag = null;
+        // Let go on top of other gear: slide off it to the nearest free spot.
+        if (drag.moving) this.store.settle(gear.id);
+      }
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', up);
       el.removeEventListener('pointercancel', up);
@@ -602,8 +647,80 @@ export class PatchFloor {
 
   protected jackClick(e: Event, j: JackView) {
     e.stopPropagation();
+    if (e.timeStamp < this.swallowJackUntil) return;
     if (!this.store.pendingJack()) this.pointer.set({ x: j.x, y: j.y });
     this.store.clickJack(j.ref);
+  }
+
+  /** On a focused jack, Delete or Backspace pulls its cable out (not the gear it's on). */
+  protected jackKey(e: KeyboardEvent, j: JackView) {
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (this.store.unplugAt(j.ref)) this.store.flash(`unplugged ${j.label}`);
+  }
+
+  /**
+   * Pressing a plugged jack and dragging away picks that cable end up: drop it on another jack
+   * to move it there, or anywhere else to pull it out. A press that doesn't move is a click
+   * (which starts a new cable from the jack, as before).
+   */
+  protected jackDown(e: PointerEvent, j: JackView) {
+    e.stopPropagation();
+    if (e.button !== 0 || !j.plugged || this.store.pendingJack()) return;
+    const cable = cableAt(this.store.patch(), j.ref);
+    if (!cable) return;
+    const end = cable.from.gear === j.ref.gear && cable.from.jack === j.ref.jack ? 'from' : 'to';
+    const carry: Carry = {
+      pointerId: e.pointerId,
+      cableId: cable.id,
+      end,
+      fixed: end === 'from' ? cable.to : cable.from,
+      sx: e.clientX,
+      sy: e.clientY,
+      lifted: false,
+    };
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    const surface = this.surfaceRef().nativeElement;
+    const move = (m: PointerEvent) => {
+      if (m.pointerId !== carry.pointerId) return;
+      if (!carry.lifted) {
+        const slop = m.pointerType === 'mouse' ? 4 : SLOP;
+        if (Math.hypot(m.clientX - carry.sx, m.clientY - carry.sy) < slop) return;
+        carry.lifted = true;
+        this.carry.set(carry);
+        // The plugged end stays put: the dashed cable runs from it to the pointer.
+        this.store.pendingJack.set(carry.fixed);
+      }
+      this.pointer.set(this.floorPoint(m, surface));
+    };
+    const up = (u: PointerEvent) => {
+      if (u.pointerId !== carry.pointerId) return;
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      if (!carry.lifted) return;
+      this.swallowJackUntil = u.timeStamp + 400;
+      const pending = this.store.pendingJack();
+      // Esc while carrying cancels: the cable stays as it was.
+      const live = pending?.gear === carry.fixed.gear && pending.jack === carry.fixed.jack;
+      this.store.pendingJack.set(null);
+      this.carry.set(null);
+      if (!live || u.type === 'pointercancel') return;
+      const target = document
+        .elementFromPoint(u.clientX, u.clientY)
+        ?.closest<HTMLElement>('.jack[data-gear]');
+      const to = target && { gear: target.dataset['gear']!, jack: target.dataset['jack']! };
+      if (to) this.store.moveCableEnd(carry.cableId, carry.end, to);
+      else {
+        this.store.unplug(carry.cableId);
+        this.store.flash('unplugged');
+      }
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
   }
 
   protected dragOver(e: DragEvent) {
@@ -629,6 +746,10 @@ export class PatchFloor {
     e.preventDefault();
     const { x, y } = this.floorPoint(e, this.surfaceRef().nativeElement);
     const def = GEAR[kind];
+    const before = this.store.patch();
     this.store.add(kind, x / CELL - def.w / 2, y / CELL - def.h / 2);
+    const id = this.store.selected();
+    // Dropped on top of other gear: it lands in the nearest free spot instead.
+    if (id && this.store.patch() !== before) this.store.settle(id);
   }
 }

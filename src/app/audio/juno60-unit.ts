@@ -61,6 +61,8 @@ interface Voice {
 }
 
 export class Juno60Unit extends Unit implements Playable {
+  /** Schedules every note from the audio clock: MIDI tracks book it ahead. */
+  readonly timed = true;
   private s!: Juno60Settings;
   private readonly voices: Voice[] = [];
   private last = VOICES - 1;

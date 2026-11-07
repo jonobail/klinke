@@ -34,6 +34,23 @@ export function swungStart(start: number, grid: Grid, swing: number): number {
 }
 
 /**
+ * Recording against swing: where a note played by hand at `played` belongs on the straight grid.
+ * The lines you hear are the on-beats and the swung off-beats; a note nearest a swung off-beat
+ * is moved back by the swing, so it plays where it was played and quantises onto its line.
+ */
+export function unswungStart(played: number, grid: Grid, swing: number): number {
+  const s = clampSwing(swing);
+  if (s === SWING_MIN) return played;
+  const step = swingStep(grid);
+  const shift = ((s - SWING_MIN) / 50) * step;
+  const pair = Math.floor(played / (2 * step)) * 2 * step;
+  // The lines around it as heard: this on-beat, the swung off-beat, the next on-beat.
+  const off = pair + step + shift;
+  const nearOff = Math.abs(played - off) < Math.min(played - pair, pair + 2 * step - played);
+  return nearOff ? Math.max(0, played - shift) : played;
+}
+
+/**
  * The notes of a track as they play, with swing applied to their starts. Notes from `loop` on
  * never play and are left out; a note swung past the loop end plays just before it instead.
  */
